@@ -1,0 +1,30 @@
+<?xml version='1.0' encoding='utf-8'?>
+
+<launch>
+  <node pkg="xmate_robot_test" type="bjj_grasp_demo" name="bjj_grasp_demo" output="screen" >
+
+    <!--抓取物料设置, M8: 1;M10: 2-->
+    <param name="target_type" value="1"/>
+
+    <!--设置机械臂运行速度-->
+    <param name="move_sped" value="0.2"/>
+    <param name="monitor_state" value="false"/>
+    <!--中转台抓取钣金件参数-->
+    <!-- 中转台抓取钣金件时机械臂的x坐标偏移量(笛卡尔坐标系)，增大往左(默认：0.018) -->
+    <param name="bjj_grasp_x" value="0.0260"/>　<!-- 单位：m-->
+    <!-- 中转台抓取钣金件时机械臂的y坐标偏移量(笛卡尔坐标系)，增大向前(默认：0.052) -->
+    <param name="bjj_grasp_y" value="0.056"/>　<!-- 单位：m-->
+    <!-- 中转台抓取钣金件时机械臂的z坐标偏移量(笛卡尔坐标系)，往下减小(默认：0.198) -->
+    <param name="bjj_grasp_z" value="0.214"/>　<!-- 单位：m-->
+
+    <!-- 中转台钣金件物料盘上面放置参数 -->
+    <!-- 中转台钣金件物料盘时机械臂的x坐标偏移量(笛卡尔坐标系)，增大往前(默认：0.0025) -->
+    <param name="bjj_place_x" value="-0.0408"/>　<!-- 单位：m-->
+    <!-- 中转台钣金件物料盘时机械臂的y坐标偏移量(笛卡尔坐标系)，增大向左(默认：-0.000) -->
+    <param name="bjj_place_y" value="-0.11"/>　<!-- 单位：m-->
+    <!-- 中转台钣金件物料盘时机械臂的z坐标偏移量(笛卡尔坐标系)，增大往下(默认：0.050) -->
+    <param name="bjj_place_z" value="0.030"/>　<!-- 单位：m-->
+
+  </node>
+
+</launch>

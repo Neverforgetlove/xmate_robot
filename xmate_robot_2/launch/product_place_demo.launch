@@ -1,0 +1,24 @@
+<?xml version='1.0' encoding='utf-8'?>
+
+<launch>
+  <node pkg="xmate_robot_test" type="new_product_place_demo" name="new_product_place_demo" output="screen" >
+
+     <!--设置机械臂运行速度-->
+    <param name="move_sped" value="0.1"/>
+    <param name="monitor_state" value="false"/>
+    
+    <!-- 从物料盘上抓取成品 -->
+    <param name="product_grasp_x" value="0.0430802"/>　<!-- 单位：m-->　　<!--增大向后-->
+    <param name="product_grasp_y" value="-0.112"/>　<!-- 单位：m-->　　<!--增大向左-->
+    <param name="product_grasp_z" value="0.042"/>　<!-- 单位：m-->　　<!--增大向下-->
+
+    <!-- 将成品放置到立体仓库 -->
+    <param name="Ste_warehouse_x" value="0.02"/>　<!-- 单位：m-->　　<!--增大向右-->
+    <param name="Ste_warehouse_y" value="0.03"/>　<!-- 单位：m-->　　<!--增大向前-->
+    <param name="Ste_warehouse_z" value="0.004"/>　<!-- 单位：m-->　　<!--增大向上-->
+
+    <!--放置到立体仓库的工位-->
+    <param name="arcodeid" value="2"/>
+  </node>
+
+</launch>

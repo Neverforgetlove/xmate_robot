@@ -1,0 +1,40 @@
+<?xml version='1.0' encoding='utf-8'?>
+
+<launch>
+  <node pkg="xmate_robot_test" type="new_grasp_demo" name="new_grasp_node" output="screen" >
+
+    <!--抓取物料设置, M8: 1;M10: 2-->
+    <param name="target_type" value="1"/>
+
+    <!--设置机械臂运行速度-->
+    <param name="move_sped" value="0.2"/>
+    <param name="monitor_state" value="false"/>
+    
+    <!-- 中转台抓取物料参数 -->
+    <!-- 抓取物料时机械臂的x坐标偏移量(笛卡尔坐标系)，增大往左(默认：0.018) -->
+    <param name="grasp_x" value="0.019"/>　<!-- 单位：m-->
+    <!-- 抓取物料时机械臂的y坐标偏移量(笛卡尔坐标系)，增大向前(默认：0.052) -->
+    <param name="grasp_y" value="0.069"/>　<!-- 单位：m-->
+    <!-- 抓取物料时机械臂的z坐标偏移量(笛卡尔坐标系)，往下减小(默认：0.198) -->
+    <param name="grasp_z" value="0.20"/>　<!-- 单位：m-->
+
+    <!-- 中转台物料id2在物料盘上面放置参数 -->
+    <!-- 抓取id2物料到物料盘时机械臂的x坐标偏移量(笛卡尔坐标系)，增大往前(默认：0.0025) -->
+    <param name="graspid2_x" value="0.009"/>　<!-- 单位：m-->
+    <!-- 抓取id2物料到物料盘时机械臂的y坐标偏移量(笛卡尔坐标系)，增大向左(默认：-0.000) -->
+    <param name="graspid2_y" value="-0.219"/>　<!-- 单位：m-->
+    <!-- 抓取id2物料到物料盘时机械臂的z坐标偏移量(笛卡尔坐标系)，增大往下(默认：0.050) -->
+    <param name="graspid2_z" value="0.050"/>　<!-- 单位：m-->
+
+
+    <!-- 中转台物料id1在物料盘上面放置参数 -->
+    <!-- 抓取id1物料到物料盘时机械臂的x坐标偏移量(笛卡尔坐标系)，增大往前(默认：-0.0005) -->
+    <param name="graspid1_x" value="0.008"/>　<!-- 单位：m-->
+    <!-- 抓取id1物料到物料盘时机械臂的y坐标偏移量(笛卡尔坐标系)，增大向左(默认：0.109) -->
+    <param name="graspid1_y" value="0.0025"/>　<!-- 单位：m-->
+    <!-- 抓取id1物料到物料盘时机械臂的z坐标偏移量(笛卡尔坐标系)，增大往下(默认：0.050) -->
+    <param name="graspid1_z" value="0.050"/>　<!-- 单位：m-->
+
+  </node>
+
+</launch>
