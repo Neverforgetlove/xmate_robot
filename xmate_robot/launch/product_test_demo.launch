@@ -1,0 +1,36 @@
+<?xml version='1.0' encoding='utf-8'?>
+
+<launch>
+  <node pkg="xmate_robot" type="product_test_demo" name="product_test_demo" output="screen" >
+  
+    <!-- 设置放置物料参数 -->
+    <!-- 放置物料到装配台时机械臂的x坐标偏移量(笛卡尔坐标系)，增大往左(默认：0.022) -->
+    <param name="place_x" value="0.022"/>　<!-- 单位：m-->
+    <!-- 放置物料到装配台时机械臂的y坐标偏移量(笛卡尔坐标系)，增大向前(默认：0.024) -->
+    <param name="place_y" value="0.024"/>　<!-- 单位：m-->
+    <!-- 放置物料到装配台时机械臂的z坐标偏移量(笛卡尔坐标系)，往下增大(默认：0.218) -->  
+    <param name="place_z" value="0.248"/>　<!-- 单位：m-->
+
+    <!-- 设置放置成品参数 -->
+    <param name="sheet_x" value="0.01"/>　<!-- 单位：m-->
+    <!-- 抓取成品时机械臂的y坐标偏移量(笛卡尔坐标系)，增大向后(默认： 0.093) -->
+    <param name="sheet_y" value="0.0526"/>　<!-- 单位：m-->
+    <!-- 抓取成品时机械臂的z坐标偏移量(笛卡尔坐标系)，往上增大(默认：0.253) -->
+    <param name="sheet_z" value="0.244"/>　<!-- 单位：m-->
+
+    <!-- 物料id2从物料盘上面抓取参数 -->
+    <!-- 从物料盘抓取id2物料时机械臂的x坐标偏移量(笛卡尔坐标系)，增大往后(默认：0.0) -->
+    <param name="placeid2_x" value="0.003"/>　<!-- 单位：m-->
+    <!-- 从物料盘抓取id2物料时机械臂的y坐标偏移量(笛卡尔坐标系)，增大向左(默认：0.1115) -->
+    <param name="placeid2_y" value="0.110"/>　<!-- 单位：m-->
+    <!-- 从物料盘抓取id2物料时机械臂的z坐标偏移量(笛卡尔坐标系)，往下减小(默认：0.041234663) -->
+    <param name="placeid2_z" value="0.057236872"/>　<!-- 单位：m-->
+
+    <!-- 成品放置到物料盘上 -->
+    <param name="product_x" value="0.00"/>　<!-- 单位：m-->
+    <param name="product_y" value="0.0"/>　<!-- 单位：m-->
+    <param name="product_z" value="0.0"/>　<!-- 单位：m-->
+
+  </node>
+
+</launch>

@@ -1,0 +1,20 @@
+<?xml version='1.0' encoding='utf-8'?>
+
+<launch>
+  <node pkg="xmate_robot" type="product_place_test_demo" name="product_place_test_demo" output="screen" >
+    <!-- 从物料盘上抓取成品 -->
+    <param name="product_grasp_x" value="-0.00002"/>　<!-- 单位：m-->
+    <param name="product_grasp_y" value="-0.006"/>　<!-- 单位：m-->
+    <param name="product_grasp_z" value="0.052"/>　<!-- 单位：m-->
+
+    <!-- 将成品放置到立体仓库 -->
+    <param name="Ste_warehouse_x" value="0.0001"/>　<!-- 单位：m-->
+    <param name="Ste_warehouse_y" value="0.0001"/>　<!-- 单位：m-->
+    <param name="Ste_warehouse_z" value="0.00001"/>　<!-- 单位：m-->
+
+    <!-- 设置放置到立体仓库的工位 -->
+    <param name="arcodeid" value="4.0"/>
+
+  </node>
+
+</launch>
