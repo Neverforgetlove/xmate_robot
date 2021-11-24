@@ -227,7 +227,6 @@ int main(int argc, char *argv[])
         wx1 = Robot_Interface.Ur_Pose[0][4];
         wy1 = Robot_Interface.Ur_Pose[0][5];
         wz1 = Robot_Interface.Ur_Pose[0][6];
-        //Robot_Interface.clean_ar_data();
         std::cout << "转动后ar坐标：" <<std::endl;
         std::cout << "datax:" <<sx1<<std::endl;
         std::cout << "datay:" <<sy1<<std::endl;
@@ -251,7 +250,7 @@ int main(int argc, char *argv[])
         wx2 = Robot_Interface.Ur_Pose[0][4];
         wy2 = Robot_Interface.Ur_Pose[0][5];
         wz2 = Robot_Interface.Ur_Pose[0][6];
-        //Robot_Interface.clean_ar_data();
+        
         std::cout << "初步平移校准后ar坐标" <<std::endl;
         std::cout << "datax:" <<sx2<<std::endl;
         std::cout << "datay:" <<sy2<<std::endl;
@@ -291,7 +290,7 @@ int main(int argc, char *argv[])
         wx3 = Robot_Interface.Ur_Pose[0][4];
         wy3 = Robot_Interface.Ur_Pose[0][5];
         wz3 = Robot_Interface.Ur_Pose[0][6];
-        //Robot_Interface.clean_ar_data();
+        
         std::cout << "抓取前ar坐标" <<std::endl;
         std::cout << "datax:" <<sx3<<std::endl;
         std::cout << "datay:" <<sy3<<std::endl;
