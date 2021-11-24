@@ -1,7 +1,7 @@
 <?xml version='1.0' encoding='utf-8'?>
 
 <launch>
-  <node pkg="xmate_robot_test" type="place_grasp_demo_new" name="place_grasp_demo_new" output="screen" >
+  <node pkg="xmate_robot_2" type="place_grasp_demo_new" name="place_grasp_demo_new" output="screen" >
 
     <!--抓取物料设置, M8: 1;M10: 2-->
     <param name="target_type" value="2"/>

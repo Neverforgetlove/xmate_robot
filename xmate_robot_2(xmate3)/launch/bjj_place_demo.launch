@@ -1,7 +1,7 @@
 <?xml version='1.0' encoding='utf-8'?>
 
 <launch>
-  <node pkg="xmate_robot_test" type="place_bjj_demo" name="xmate_robot" output="screen" >
+  <node pkg="xmate_robot_2" type="place_bjj_demo" name="xmate_robot" output="screen" >
     <!--设置机械臂运行速度-->
     <param name="move_sped" value="0.3"/>
     <param name="monitor_state" value="false"/>

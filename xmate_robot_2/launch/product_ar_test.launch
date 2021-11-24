@@ -1,7 +1,7 @@
 <?xml version='1.0' encoding='utf-8'?>
 
 <launch>
-  <node pkg="xmate_robot_test" type="product_ar_test" name="product_ar_test" output="screen" >
+  <node pkg="xmate_robot_2" type="product_ar_test" name="product_ar_test" output="screen" >
     <!--设置机械臂运行速度-->
     <param name="move_sped" value="0.2"/>
     <param name="monitor_state" value="false"/>
