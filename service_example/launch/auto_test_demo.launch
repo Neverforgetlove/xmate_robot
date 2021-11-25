@@ -1,0 +1,12 @@
+<?xml version='1.0' encoding='utf-8'?>
+
+<launch>
+    <!-- 启动与PLC连接的程序 -->
+    <node pkg="service_example" name="plc_agv" type="auto_test_demo.py" output="screen">
+    </node>
+
+    <!-- 启动AGV的程序 -->
+    <node pkg="service_example" name="agv_test" type="agv_test_demo.py" output="screen">
+    </node>
+
+</launch>

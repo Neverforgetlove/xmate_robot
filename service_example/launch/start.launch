@@ -1,0 +1,15 @@
+<?xml version='1.0' encoding='utf-8'?>
+
+<launch>
+
+    <!-- 启动与PLC连接的程序 -->
+    <node pkg="service_example" name="plc_agv" type="demo.py" output="screen">
+    </node>
+
+    <!-- 启动AGV的程序 -->
+    <node pkg="service_example" name="agv_start" type="agv_start.py" output="screen">
+    <!--控制状态： 0为语音导航  1为全自动-->
+    <param name="control_type" value="1" />
+    </node>
+
+</launch>

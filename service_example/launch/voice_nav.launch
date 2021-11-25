@@ -1,0 +1,14 @@
+<?xml version='1.0' encoding='utf-8'?>
+
+<launch>
+
+    <!--打开语音导航-->
+    <include file="$(find castlex_voice_system)/launch/voice_nav.launch"/>
+
+    <!-- 启动AGV的程序 -->
+    <node pkg="service_example" name="agv_start" type="agv_start.py" output="screen">
+    <!--控制状态： 0为语音导航  1为全自动-->
+    <param name="control_type" value="0" />
+    </node>
+
+</launch>
