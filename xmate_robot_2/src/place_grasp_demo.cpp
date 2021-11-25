@@ -1681,13 +1681,17 @@ int main(int argc, char *argv[])
             //抓取识别位姿
             Robot_Interface.Robot_MoveJ(Robot_Interface.LTCK_pubsh_pose,robot);
         }
-        Robot_Interface.Robot_MoveL(sx-0.05,-sy+0.02,0.0,robot);
+        /*Robot_Interface.Robot_MoveL(sx-0.05,-sy+0.02,0.0,robot);
         Robot_Interface.Robot_MoveL(sx1,-sy1,0.0,robot);
         Robot_Interface.Robot_MoveL(0.0,-0.03,0.0,robot);
         Robot_Interface.Robot_MoveL(0.0,0.0,-sz1+0.25,robot);
         Robot_Interface.Robot_MoveR(-PI/2, robot);
         Robot_Interface.Robot_MoveL(0.06 + Ste_warehouse_x, 0.11 + Ste_warehouse_y, 0.0, robot);
-        Robot_Interface.Robot_MoveL(0.0, 0.0, -0.02 + Ste_warehouse_z,robot);
+        Robot_Interface.Robot_MoveL(0.0, 0.0, -0.02 + Ste_warehouse_z,robot);*/
+	Robot_Interface.Robot_MoveL(sx-0.05,-sy+0.02,0.0,robot);
+        Robot_Interface.Robot_MoveL(sx1,-sy1,0.0,robot);
+        Robot_Interface.Robot_MoveL(Ste_warehouse_x, Ste_warehouse_y, 0.0, robot);
+        Robot_Interface.Robot_MoveL(0.0, 0.0, Ste_warehouse_z,robot);
         open_state = Robot_Interface.Robot_Grasp_Control(1,robot);
         if(open_state){
             Robot_Interface.Robot_MoveL(0.0,0.0,0.04,robot);

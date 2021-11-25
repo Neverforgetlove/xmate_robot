@@ -92,6 +92,7 @@ int main(int argc, char *argv[])
 
     try{
 	    Robot_Interface.Robot_Set_Speed(move_sped,robot);
+	    std::cout<<Robot_Interface.place_fixed_middle_pose<<std::endl;
         //抓取中间位姿
         Robot_Interface.Robot_MoveJ(Robot_Interface.place_fixed_middle_pose,robot);
         //抓取识别位姿

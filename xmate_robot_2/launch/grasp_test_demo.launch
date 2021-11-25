@@ -8,8 +8,6 @@
 
     <!--设置机械臂运行速度-->
     <param name="move_sped" value="0.2"/>
-    <param name="monitor_state" value="false"/>
-    
     <!-- 中转台抓取物料参数 -->
     <!-- 抓取物料时机械臂的x坐标偏移量(笛卡尔坐标系)，增大往左(默认：0.018) -->
     <param name="grasp_x" value="0.019"/>　<!-- 单位：m-->

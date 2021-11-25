@@ -1,7 +1,7 @@
 <?xml version='1.0' encoding='utf-8'?>
 
 <launch>
-  <node pkg="xmate_robot_2" type="no_ar_data_test" name="no_ar_data_test" output="screen" >
+  <node pkg="xmate_robot_test" type="no_ar_data_test" name="no_ar_data_test" output="screen" >
 
     <!--抓取物料设置, M8: 1;M10: 2-->
     <param name="target_type" value="1"/>

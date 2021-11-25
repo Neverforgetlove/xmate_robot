@@ -49,8 +49,12 @@ int main(int argc, char *argv[])
 
     //未接收到数据次数
     int no_data_time = 0;
+    int wait_time = 0;
     bool move_left = false;
     bool move_right = false;
+    bool LS_Grasp = false;
+    bool LM_Grasp = false;
+    bool BJJ_Grasp = false;
     
     //0 1 螺丝螺母 2钣金
     int grasp_obj_state[3] = {0,0,0};
@@ -292,10 +296,11 @@ int main(int argc, char *argv[])
         {   
             if(i == 1)
             {        
-                std::cout<<"move left"<<std::endl;
-                while(no_data_time < 5){
+                
+                while(no_data_time < 6){
                     no_data_time +=1;
                     if(no_data_time>5 && !move_left){
+                        std::cout<<"move left"<<std::endl;
                         Robot_Interface.Robot_MoveL(0.05,0.0,0.0,robot);
                         move_left = true;
                         no_data_time = 0;
@@ -303,12 +308,16 @@ int main(int argc, char *argv[])
                     }
                 }
             }
+
             if(i == 2)
             {
-                std::cout<<"move right"<<std::endl;
-                while(no_data_time < 5){
+                
+                while(no_data_time < 6){
                     no_data_time +=1;
                     if(no_data_time>5 && !move_right){
+                        Robot_Interface.Robot_MoveL(0.0,0.0,0.01,robot);
+                        Robot_Interface.Robot_MoveJ(Robot_Interface.grasp_identify_pose,robot);
+                        std::cout<<"move right"<<std::endl;
                         Robot_Interface.Robot_MoveL(-0.05,0.0,0.0,robot);
                         move_right = true;
                         no_data_time = 0;
@@ -317,9 +326,21 @@ int main(int argc, char *argv[])
                 }
             }
 
-            sleep(1.5);
-            if(Robot_Interface.Ar_Pose[grasp_ar_id[1]][0]!=0.0)
-            {
+            while(Robot_Interface.Ar_Pose[grasp_ar_id[1]][0]==0.0){
+			
+			if(wait_time >3){
+			   wait_time = 0;
+			   break;		
+			}
+			wait_time += 1;
+                        ros::spinOnce();
+                        loop_rate.sleep();
+			sleep(0.5);
+
+            }
+            if(Robot_Interface.Ar_Pose[grasp_ar_id[1]][0]!=0.0 && LS_Grasp == false)
+            {	
+   		LS_Grasp = true;
                 sx = Robot_Interface.Ar_Pose[grasp_ar_id[1]][0];
                 sy = Robot_Interface.Ar_Pose[grasp_ar_id[1]][1];
                 sz = Robot_Interface.Ar_Pose[grasp_ar_id[1]][2];
@@ -468,9 +489,21 @@ int main(int argc, char *argv[])
                 }
             }
 
-            sleep(1.5);
-            if(Robot_Interface.Ar_Pose[grasp_ar_id[0]][0]!=0.0)
+            while(Robot_Interface.Ar_Pose[grasp_ar_id[0]][0]==0.0){
+			
+			if(wait_time >3){
+			   wait_time = 0;
+			   break;		
+			}
+			wait_time += 1;
+                        ros::spinOnce();
+                        loop_rate.sleep();
+			sleep(0.5);
+
+            }
+            if(Robot_Interface.Ar_Pose[grasp_ar_id[0]][0]!=0.0 && LM_Grasp == false)
             {
+		LM_Grasp = true;
                 sx1 = Robot_Interface.Ar_Pose[grasp_ar_id[0]][0];
                 sy1 = Robot_Interface.Ar_Pose[grasp_ar_id[0]][1];
                 sz1 = Robot_Interface.Ar_Pose[grasp_ar_id[0]][2];
@@ -619,9 +652,21 @@ int main(int argc, char *argv[])
                 }
             }
 
-            sleep(1.5);
-            if(Robot_Interface.Ur_Pose[0][0]!=0.0)
+            while(Robot_Interface.Ur_Pose[0][0]==0.0){
+			
+			if(wait_time >3){
+			   wait_time = 0;
+			   break;		
+			}
+			wait_time += 1;
+                        ros::spinOnce();
+                        loop_rate.sleep();
+			sleep(0.5);
+
+            }
+            if(Robot_Interface.Ur_Pose[0][0]!=0.0 && BJJ_Grasp == false)
             {
+		BJJ_Grasp = true;
                 sx = Robot_Interface.Ur_Pose[0][0];
                 sy = Robot_Interface.Ur_Pose[0][1];
                 sz = Robot_Interface.Ur_Pose[0][2];
@@ -772,7 +817,9 @@ int main(int argc, char *argv[])
             {
                 //抓取中间位姿
                 Robot_Interface.Robot_MoveJ(Robot_Interface.grasp_fixed_middle_pose,robot);
-                move_left = move_right = false;     
+                move_left = move_right = false;   
+                arm_state.data = 2;         
+                grasp_pub.publish(arm_state);
                 break;
             }
         }
@@ -789,10 +836,11 @@ int main(int argc, char *argv[])
         {   
             if(i == 1)
             {        
-                std::cout<<"move left"<<std::endl;
-                while(no_data_time < 5){
+                
+                while(no_data_time < 6){
                     no_data_time +=1;
                     if(no_data_time>5 && !move_left){
+                        std::cout<<"move left"<<std::endl;
                         Robot_Interface.Robot_MoveL(0.05,0.0,0.0,robot);
                         move_left = true;
                         no_data_time = 0;
@@ -802,10 +850,13 @@ int main(int argc, char *argv[])
             }
             if(i == 2)
             {
-                std::cout<<"move right"<<std::endl;
-                while(no_data_time < 5){
+                
+                while(no_data_time < 6){
                     no_data_time +=1;
                     if(no_data_time>5 && !move_right){
+                        Robot_Interface.Robot_MoveL(0.0,0.0,0.01,robot);
+                        Robot_Interface.Robot_MoveJ(Robot_Interface.grasp_identify_pose,robot);
+                        std::cout<<"move right"<<std::endl;
                         Robot_Interface.Robot_MoveL(-0.05,0.0,0.0,robot);
                         move_right = true;
                         no_data_time = 0;
@@ -814,9 +865,21 @@ int main(int argc, char *argv[])
                 }
             }
 
-            sleep(1.5);
-            if(Robot_Interface.Ar_Pose[grasp_ar_id[1]][0]!=0.0)
+            while(Robot_Interface.Ar_Pose[grasp_ar_id[1]][0]==0.0){
+			
+			if(wait_time >3){
+			   wait_time = 0;
+			   break;		
+			}
+			wait_time += 1;
+                        ros::spinOnce();
+                        loop_rate.sleep();
+			sleep(0.5);
+
+            }
+            if(Robot_Interface.Ar_Pose[grasp_ar_id[1]][0]!=0.0 && LS_Grasp == false)
             {
+		LS_Grasp = true;
                 sx = Robot_Interface.Ar_Pose[grasp_ar_id[1]][0];
                 sy = Robot_Interface.Ar_Pose[grasp_ar_id[1]][1];
                 sz = Robot_Interface.Ar_Pose[grasp_ar_id[1]][2];
@@ -965,9 +1028,21 @@ int main(int argc, char *argv[])
                 }
             }
 
-            sleep(1.5);
-            if(Robot_Interface.Ar_Pose[grasp_ar_id[0]][0]!=0.0)
-            {
+            while(Robot_Interface.Ar_Pose[grasp_ar_id[0]][0]==0.0){
+			
+			if(wait_time >3){
+			   wait_time = 0;
+			   break;		
+			}
+			wait_time += 1;
+                        ros::spinOnce();
+                        loop_rate.sleep();
+			sleep(0.5);
+
+            }
+            if(Robot_Interface.Ar_Pose[grasp_ar_id[0]][0]!=0.0 && LM_Grasp == false)
+            {	
+		LM_Grasp = true;
                 sx1 = Robot_Interface.Ar_Pose[grasp_ar_id[0]][0];
                 sy1 = Robot_Interface.Ar_Pose[grasp_ar_id[0]][1];
                 sz1 = Robot_Interface.Ar_Pose[grasp_ar_id[0]][2];
@@ -1116,9 +1191,21 @@ int main(int argc, char *argv[])
                 }
             }
 
-            sleep(1.5);
-            if(Robot_Interface.Ur_Pose[0][0]!=0.0)
-            {
+            while(Robot_Interface.Ur_Pose[0][0]==0.0){
+			
+			if(wait_time >3){
+			   wait_time = 0;
+			   break;		
+			}
+			wait_time += 1;
+                        ros::spinOnce();
+                        loop_rate.sleep();
+			sleep(0.5);
+
+            }
+            if(Robot_Interface.Ur_Pose[0][0]!=0.0 && BJJ_Grasp == false)
+            {	
+		BJJ_Grasp = true;
                 sx = Robot_Interface.Ur_Pose[0][0];
                 sy = Robot_Interface.Ur_Pose[0][1];
                 sz = Robot_Interface.Ur_Pose[0][2];
@@ -2125,13 +2212,17 @@ int main(int argc, char *argv[])
             //抓取识别位姿
             Robot_Interface.Robot_MoveJ(Robot_Interface.LTCK_pubsh_pose,robot);
         }
-        Robot_Interface.Robot_MoveL(sx-0.05,-sy+0.02,0.0,robot);
+        /*Robot_Interface.Robot_MoveL(sx-0.05,-sy+0.02,0.0,robot);
         Robot_Interface.Robot_MoveL(sx1,-sy1,0.0,robot);
         Robot_Interface.Robot_MoveL(0.0,-0.03,0.0,robot);
         Robot_Interface.Robot_MoveL(0.0,0.0,-sz1+0.25,robot);
         Robot_Interface.Robot_MoveR(-PI/2, robot);
         Robot_Interface.Robot_MoveL(0.06 + Ste_warehouse_x, 0.11 + Ste_warehouse_y, 0.0, robot);
-        Robot_Interface.Robot_MoveL(0.0, 0.0, -0.02 + Ste_warehouse_z,robot);
+        Robot_Interface.Robot_MoveL(0.0, 0.0, -0.02 + Ste_warehouse_z,robot);*/
+        Robot_Interface.Robot_MoveL(sx-0.05,-sy+0.02,0.0,robot);
+        Robot_Interface.Robot_MoveL(sx1,-sy1,0.0,robot);
+        Robot_Interface.Robot_MoveL(Ste_warehouse_x, Ste_warehouse_y, 0.0, robot);
+        Robot_Interface.Robot_MoveL(0.0, 0.0, Ste_warehouse_z,robot);
         bool open_state10 = Robot_Interface.Robot_Grasp_Control(1,robot);
         if(open_state10){
             Robot_Interface.Robot_MoveL(0.0,0.0,0.04,robot);
