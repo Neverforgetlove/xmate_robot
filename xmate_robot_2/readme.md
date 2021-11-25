@@ -18,6 +18,7 @@
 ## place_grasp_demo.launch: 综合任务
 ## test_demo.launch: 查看摄像头视野
 ## get_robot_moment: 获取力矩监听数值(使用请联系技术人员)
+## palce_grasp_demo_new.launch: 综合任务升级版
 
 
 # 注意：
