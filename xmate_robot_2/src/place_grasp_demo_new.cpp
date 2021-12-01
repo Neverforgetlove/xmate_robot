@@ -134,6 +134,7 @@ int main(int argc, char *argv[])
     //成品抓取放置偏移量
     double cp_bjj_grasp_x, cp_bjj_grasp_y, cp_bjj_grasp_z;
     double cp_bjj_place_x, cp_bjj_place_y, cp_bjj_place_z;
+    double cp_bjj_angle = 0.0;
 
     //  从物料盘上抓取成品
     double product_grasp_x, product_grasp_y, product_grasp_z; 
@@ -503,7 +504,7 @@ int main(int argc, char *argv[])
             }
             if(Robot_Interface.Ar_Pose[grasp_ar_id[0]][0]!=0.0 && LM_Grasp == false)
             {
-		LM_Grasp = true;
+		        LM_Grasp = true;
                 sx1 = Robot_Interface.Ar_Pose[grasp_ar_id[0]][0];
                 sy1 = Robot_Interface.Ar_Pose[grasp_ar_id[0]][1];
                 sz1 = Robot_Interface.Ar_Pose[grasp_ar_id[0]][2];
@@ -666,7 +667,7 @@ int main(int argc, char *argv[])
             }
             if(Robot_Interface.Ur_Pose[0][0]!=0.0 && BJJ_Grasp == false)
             {
-		BJJ_Grasp = true;
+		        BJJ_Grasp = true;
                 sx = Robot_Interface.Ur_Pose[0][0];
                 sy = Robot_Interface.Ur_Pose[0][1];
                 sz = Robot_Interface.Ur_Pose[0][2];
@@ -879,7 +880,7 @@ int main(int argc, char *argv[])
             }
             if(Robot_Interface.Ar_Pose[grasp_ar_id[1]][0]!=0.0 && LS_Grasp == false)
             {
-		LS_Grasp = true;
+		        LS_Grasp = true;
                 sx = Robot_Interface.Ar_Pose[grasp_ar_id[1]][0];
                 sy = Robot_Interface.Ar_Pose[grasp_ar_id[1]][1];
                 sz = Robot_Interface.Ar_Pose[grasp_ar_id[1]][2];
@@ -1042,7 +1043,7 @@ int main(int argc, char *argv[])
             }
             if(Robot_Interface.Ar_Pose[grasp_ar_id[0]][0]!=0.0 && LM_Grasp == false)
             {	
-		LM_Grasp = true;
+		        LM_Grasp = true;
                 sx1 = Robot_Interface.Ar_Pose[grasp_ar_id[0]][0];
                 sy1 = Robot_Interface.Ar_Pose[grasp_ar_id[0]][1];
                 sz1 = Robot_Interface.Ar_Pose[grasp_ar_id[0]][2];
@@ -1205,7 +1206,7 @@ int main(int argc, char *argv[])
             }
             if(Robot_Interface.Ur_Pose[0][0]!=0.0 && BJJ_Grasp == false)
             {	
-		BJJ_Grasp = true;
+		        BJJ_Grasp = true;
                 sx = Robot_Interface.Ur_Pose[0][0];
                 sy = Robot_Interface.Ur_Pose[0][1];
                 sz = Robot_Interface.Ur_Pose[0][2];
@@ -1812,7 +1813,7 @@ int main(int argc, char *argv[])
             Robot_Interface.Robot_MoveR(eulerAngle7(0) - PI/2, robot);
             robot_angle = eulerAngle7(0)- PI/2;
         }
-
+        cp_bjj_angle = robot_angle;
         std::cout<<"AR码角度： "<< robot_angle <<std::endl;
         sleep(1.0);
 	    Robot_Interface.clean_ur_data();
@@ -2003,18 +2004,20 @@ int main(int argc, char *argv[])
         Eigen::Vector3d eulerAngle8=quaternion_4.matrix().eulerAngles(2,1,0);
         //弧度转角度
         robot_angle = (eulerAngle8(0) * 180) / PI;
-        if(robot_angle > 90.0){
-	            robot_angle = 180.0 - robot_angle;	
-	    }
-        if(robot_angle > 90){
-            //  机械臂末端旋转
-            Robot_Interface.Robot_MoveR(-PI/2 + eulerAngle8(0), robot);
-        }else{
-            //  机械臂末端旋转
-            Robot_Interface.Robot_MoveR(eulerAngle8(0) - PI/2, robot);
-        }
+        //  机械臂末端旋转
+        Robot_Interface.Robot_MoveR(cp_bjj_angle, robot);
+        // if(robot_angle > 90.0){
+	    //         robot_angle = 180.0 - robot_angle;	
+	    // }
+        // if(robot_angle > 90){
+        //     //  机械臂末端旋转
+        //     Robot_Interface.Robot_MoveR(-PI/2 + eulerAngle8(0), robot);
+        // }else{
+        //     //  机械臂末端旋转
+        //     Robot_Interface.Robot_MoveR(eulerAngle8(0) - PI/2, robot);
+        // }
 
-        std::cout<<"AR码角度： "<< robot_angle <<std::endl;
+        std::cout<<"AR码角度： "<< cp_bjj_angle <<std::endl;
         sleep(1.0);
 	    Robot_Interface.clean_ur_data();
         
