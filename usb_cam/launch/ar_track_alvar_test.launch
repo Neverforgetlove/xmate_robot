@@ -1,0 +1,25 @@
+<launch>
+	<node pkg="tf" type="static_transform_publisher" name="world_to_cam" args="-0.038596 -0.114021 0.019666 0.0 -0.0166198 -0.00825487 usb_cam tool0 100"/>
+	<arg name="marker_size" default="3.8" /><!--4.12-->
+	<arg name="max_new_marker_error" default="0.05" />
+	<arg name="max_track_error" default="0.05" />
+	<!--arg name="cam_image_topic" default="/camera/color/image_raw" /-->
+	<!--arg name="cam_info_topic" default="/camera/color/camera_info" /-->
+	<arg name="cam_image_topic" default="/usb_cam/image_raw" />
+	<arg name="cam_info_topic" default="/usb_cam/camera_info" />
+	<arg name="output_frame" default="/usb_cam" />
+
+    <!--include file ="$(find realsense2_camera)/launch/rs_camera_qr.launch" /-->
+   <include file="$(find usb_cam)/launch/usb_cam-test.launch" />
+
+	<node name="ar_track_alvar" pkg="ar_track_alvar" type="individualMarkersNoKinect" respawn="false" output="screen">
+		<param name="marker_size"           type="double" value="$(arg marker_size)" />
+		<param name="max_new_marker_error"  type="double" value="$(arg max_new_marker_error)" />
+		<param name="max_track_error"       type="double" value="$(arg max_track_error)" />
+		<param name="output_frame"          type="string" value="$(arg output_frame)" />
+
+		<remap from="camera_image"  to="$(arg cam_image_topic)" />
+		<remap from="camera_info"   to="$(arg cam_info_topic)" />
+	</node>
+
+</launch>
