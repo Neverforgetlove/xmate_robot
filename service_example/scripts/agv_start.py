@@ -214,15 +214,15 @@ class test_agv_move():
             self.agv_move(0)
         # 去立体仓库
         if data.data == 1:
-            self.agv_move(1)
+            self.agv_move(2)
         # 去装配台
         if data.data == 2:
-            self.agv_move(2)
+            self.agv_move(3)
         # 开始巡逻
         if data.data == 3:
             if self.agv_move(0):
-                if self.agv_move(1):
-                    if self.agv_move(2):
+                if self.agv_move(2):
+                    if self.agv_move(3):
                         rospy.loginfo("巡逻结束")
         # 语音控制抓取 需要开启grasp_test_demo.launch
         if data.data == 4:
@@ -231,12 +231,12 @@ class test_agv_move():
                 rospy.loginfo("语音控制抓取物料")
         # 语音控制放置 需要开启place_test_demo.launch
         if data.data == 5:
-            if self.agv_move(2):
+            if self.agv_move(3):
                 self.pub.publish(2)
                 rospy.loginfo("语音控制放置物料")
         # 语音控制放成品 需要开启product_place_test_demo.launch
         if data.data == 6:
-            if self.agv_move(1):
+            if self.agv_move(2):
                 self.pub.publish(3)
                 rospy.loginfo("语音控制放置成品")
 
