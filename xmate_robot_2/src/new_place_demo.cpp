@@ -567,6 +567,10 @@ int main(int argc, char *argv[])
             Robot_Interface.Robot_MoveL(0.0,0.0,sz3-place_z,robot);
             //放置识别位姿
             Robot_Interface.Robot_MoveJ(Robot_Interface.place_identify_pose,robot);
+            //放置中间位姿
+            Robot_Interface.Robot_MoveJ(Robot_Interface.place_fixed_middle_pose,robot);
+            //  物料盘上方
+            Robot_Interface.Robot_MoveJ(Robot_Interface.pubsh_pose,robot);
         }
 
 /*-----------------------------id3, 钣金件-----------------------------*/
