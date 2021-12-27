@@ -579,6 +579,11 @@ int main(int argc, char *argv[])
             ros::spinOnce();
             loop_rate.sleep();
         }
+        //放置识别位姿
+        Robot_Interface.Robot_MoveJ(Robot_Interface.place_identify_pose,robot);
+        //放置中间位姿
+        Robot_Interface.Robot_MoveJ(Robot_Interface.place_fixed_middle_pose,robot);
+        sleep(1.0);
         while(Robot_Interface.Ur_Pose[0][0]==0.0){
             no_data_time +=1;
             if(no_data_time>5 && !move_left){
