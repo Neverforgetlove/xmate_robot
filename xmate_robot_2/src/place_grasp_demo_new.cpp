@@ -334,14 +334,14 @@ int main(int argc, char *argv[])
 			   break;		
 			}
 			wait_time += 1;
-                        ros::spinOnce();
-                        loop_rate.sleep();
+            ros::spinOnce();
+            loop_rate.sleep();
 			sleep(0.5);
 
             }
             if(Robot_Interface.Ar_Pose[grasp_ar_id[1]][0]!=0.0 && LS_Grasp == false)
             {	
-   		LS_Grasp = true;
+   		        LS_Grasp = true;
                 sx = Robot_Interface.Ar_Pose[grasp_ar_id[1]][0];
                 sy = Robot_Interface.Ar_Pose[grasp_ar_id[1]][1];
                 sz = Robot_Interface.Ar_Pose[grasp_ar_id[1]][2];
@@ -1036,8 +1036,8 @@ int main(int argc, char *argv[])
 			   break;		
 			}
 			wait_time += 1;
-                        ros::spinOnce();
-                        loop_rate.sleep();
+            ros::spinOnce();
+            loop_rate.sleep();
 			sleep(0.5);
 
             }
