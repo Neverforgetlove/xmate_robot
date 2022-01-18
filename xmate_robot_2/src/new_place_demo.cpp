@@ -635,7 +635,7 @@ int main(int argc, char *argv[])
 
         std::cout<<"AR码角度： "<< robot_angle <<std::endl;
         sleep(1.0);
-	    Robot_Interface.clean_ar_data();
+	    Robot_Interface.clean_ur_data();
 
         /*-----初步校准-----*/
         //等待二维码数据
@@ -659,7 +659,7 @@ int main(int argc, char *argv[])
 
         Robot_Interface.Robot_MoveL(sx1-0.024,-sy1+0.02,0.0,robot);
         sleep(1.0);
-        Robot_Interface.clean_ar_data();
+        Robot_Interface.clean_ur_data();
 
         /*-----二次校准-----*/
         //等待二维码数据
@@ -701,7 +701,7 @@ int main(int argc, char *argv[])
         std::cout << "datay:" <<sy2<<std::endl;
         std::cout << "dataz:" <<sz2<<std::endl;
         sleep(1.0);
-        Robot_Interface.clean_ar_data();
+        Robot_Interface.clean_ur_data();
         
         /*-----往下-----*/
         while(Robot_Interface.Ur_Pose[0][0]==0.0){
@@ -725,7 +725,7 @@ int main(int argc, char *argv[])
         Robot_Interface.Robot_MoveL(0.0,0.0,sz3-zpt_bjj_place_z,robot);
         /*模拟动作结束, 开始复制动作放置*/
         sleep(1.0);
-        Robot_Interface.clean_ar_data();
+        Robot_Interface.clean_ur_data();
 
         //放置识别位姿
         Robot_Interface.Robot_MoveJ(Robot_Interface.place_identify_pose,robot);
