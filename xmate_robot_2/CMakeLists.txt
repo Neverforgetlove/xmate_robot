@@ -235,3 +235,18 @@ librosbag.so
 librosbag_storage.so
  ${catkin_LIBRARIES})
 
+add_executable(voice_grasp_place src/voice_grasp_place.cpp)
+target_link_libraries(voice_grasp_place
+RCI_Client.a
+xMateModel.a
+orocos-kdl.a
+glog.a
+pthread
+libroscpp.so
+librosconsole.so
+librostime.so
+libcpp_common.so
+libroscpp_serialization.so
+librosbag.so
+librosbag_storage.so
+ ${catkin_LIBRARIES})
