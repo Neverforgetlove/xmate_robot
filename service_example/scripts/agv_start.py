@@ -277,7 +277,7 @@ class test_agv_move():
             print("get Ass_done state fail, Ass_Done data is: ", data.data)
 
     def Grasp_Done(self, data):
-        if data.data == 2 and self.control_type == 1:
+        if data.data == 2:
             if self.agv_move(1):
                 self.pub.publish(2)
 
