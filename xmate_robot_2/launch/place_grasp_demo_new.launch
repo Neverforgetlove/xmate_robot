@@ -1,6 +1,12 @@
 <?xml version='1.0' encoding='utf-8'?>
 
 <launch>
+  <!--
+    语音抓取需要将
+    type="place_grasp_demo_new"
+    更改为
+    type="voice_grasp_place"
+  -->
   <node pkg="xmate_robot_2" type="place_grasp_demo_new" name="place_grasp_demo_new" output="screen" >
 
     <!--抓取物料设置, M8: 1;M10: 2-->
