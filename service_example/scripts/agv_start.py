@@ -224,15 +224,15 @@ class test_agv_move():
                 if self.agv_move(2):
                     if self.agv_move(3):
                         rospy.loginfo("巡逻结束")
-        # 语音控制抓取 需要开启grasp_test_demo.launch
+        # 语音控制抓取 需要开启place_grasp_demo_new.launch,需要修改该launch文件中的节点
         if data.data == 4:
             if self.agv_move(0):
                 self.pub.publish(1)
                 rospy.loginfo("语音控制抓取物料")
-        # 语音控制放置 需要开启place_test_demo.launch
+        # 语音控制放置 需要开启place_grasp_demo_new.launch,需要修改该launch文件中的节点
         if data.data == 5:
             if self.agv_move(3):
-                self.pub.publish(2)
+                self.pub.publish(3)
                 rospy.loginfo("语音控制放置物料")
         # 语音控制放成品 需要开启product_place_test_demo.launch
         if data.data == 6:
