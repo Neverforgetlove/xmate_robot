@@ -39,7 +39,7 @@ int main(int argc, char *argv[])
     //机械臂移动速度
     node.param("move_sped", move_sped, 0.2);
     //启动力矩监听
-    node.param("monitor_state", start_moment, false);
+    node.param("monitor_state", start_moment, true);
     
     //初始化
     HG_AI_Robot Robot_Interface;
@@ -79,6 +79,7 @@ int main(int argc, char *argv[])
     // std::array<double,7> Robot_Interface.pubsh_pose = {{(-18.750915 * PI / 180), (-5.1412582 * PI / 180), (3.69308166 * PI / 180), (-101.94888 * PI / 180), (-1.8495998 * PI / 180), (-72.657669 * PI / 180), (-15.904083 * PI / 180)}};
 
     int arcodeid = 0;
+    int push_id = 0;
     int ID_Name[4] = {4,6,7,8};    
 
     //  将成品放置到物料盘上
@@ -115,6 +116,14 @@ int main(int argc, char *argv[])
 
 	ros::Subscriber agv_flag = n.subscribe("agv_state", 1, AGV_CallBack);
     Robot_Interface.Stop_Moment_Thread = true;
+    push_id = arcodeid;
+    // 如果放0,1号位开启碰撞检测
+    if(arcodeid == 0 || arcodeid == 1)
+    {
+        Robot_Interface.Start_Moment_Thread = true;
+        Robot_Interface.Stop_Moment_Thread = false;
+    }
+
     arcodeid = ID_Name[arcodeid];
     //等待AGV到位信号
 	while(AGV_Current_Goal != 3)
@@ -126,11 +135,20 @@ int main(int argc, char *argv[])
     /*成品抓取*/
     try{
         Robot_Interface.Robot_Set_Speed(move_sped,robot);
-        //抓取中间位姿
-        Robot_Interface.Robot_MoveJ(Robot_Interface.LTCK_fixed_middle_pose,robot);
-        //抓取识别位姿
-        Robot_Interface.Robot_MoveJ(Robot_Interface.LTCK_pubsh_pose,robot);
-
+        if(push_id == 0 || push_id == 2)
+        {
+            //旋转末端
+            Robot_Interface.Robot_MoveJ(Robot_Interface.LTCK_left_middle_pose,robot);
+            //抓取中间位姿
+            Robot_Interface.Robot_MoveJ(Robot_Interface.LTCK_left_middle_push_pose,robot);
+            //抓取识别位姿
+            Robot_Interface.Robot_MoveJ(Robot_Interface.LTCK_left_push_pose,robot);
+        }else{
+            //抓取中间位姿
+            Robot_Interface.Robot_MoveJ(Robot_Interface.LTCK_fixed_middle_pose,robot);
+            //抓取识别位姿
+            Robot_Interface.Robot_MoveJ(Robot_Interface.LTCK_pubsh_pose,robot);
+        }
         /*-----校准角度-----*/
 	    while(Robot_Interface.Ar_Pose[arcodeid][0]==0.0){
             ros::spinOnce();
@@ -188,6 +206,12 @@ int main(int argc, char *argv[])
         std::cout << "dataz:" <<sz1<<std::endl;
         sleep(1.0);
         Robot_Interface.clean_ar_data();
+
+        // 放左边先旋转缩回
+        if(push_id == 0 || push_id == 1){
+            Robot_Interface.Robot_MoveJ(Robot_Interface.LTCK_left_middle_push_pose,robot);
+            Robot_Interface.Robot_MoveJ(Robot_Interface.LTCK_left_middle_pose,robot);
+        }
         
         Robot_Interface.Robot_MoveJ(Robot_Interface.grasp_id1_pubsh,robot);
         Robot_Interface.Robot_MoveL(-product_grasp_x,product_grasp_y,0.0,robot);
@@ -196,10 +220,20 @@ int main(int argc, char *argv[])
         bool close_state1 = Robot_Interface.Robot_Grasp_Control(0,robot);
         if(close_state1){
             Robot_Interface.Robot_MoveL(0.0,0.0,product_grasp_z,robot);
-            //抓取中间位姿
-            Robot_Interface.Robot_MoveJ(Robot_Interface.LTCK_fixed_middle_pose,robot);
-            //抓取识别位姿
-            Robot_Interface.Robot_MoveJ(Robot_Interface.LTCK_pubsh_pose,robot);
+            
+            if(push_id == 0 || push_id == 1){
+                //旋转末端
+                Robot_Interface.Robot_MoveJ(Robot_Interface.LTCK_left_middle_pose,robot);
+                //抓取中间位姿
+                Robot_Interface.Robot_MoveJ(Robot_Interface.LTCK_left_middle_push_pose,robot);
+                //抓取识别位姿
+                Robot_Interface.Robot_MoveJ(Robot_Interface.LTCK_left_push_pose,robot);
+            }else{
+                //抓取中间位姿
+                Robot_Interface.Robot_MoveJ(Robot_Interface.LTCK_fixed_middle_pose,robot);
+                //抓取识别位姿
+                Robot_Interface.Robot_MoveJ(Robot_Interface.LTCK_pubsh_pose,robot);
+            }
         }
         // Robot_Interface.Robot_MoveL(sx-0.05,-sy+0.02,0.0,robot);
         // Robot_Interface.Robot_MoveL(sx1,-sy1,0.0,robot);
@@ -213,8 +247,14 @@ int main(int argc, char *argv[])
         bool open_state = Robot_Interface.Robot_Grasp_Control(1,robot);
         if(open_state){
             Robot_Interface.Robot_MoveL(0.0,0.0,0.04,robot);
-            //放置识别位姿
-            Robot_Interface.Robot_MoveJ(Robot_Interface.LTCK_fixed_middle_pose,robot);
+            if(push_id == 0|| push_id == 1)
+            {
+                Robot_Interface.Robot_MoveJ(Robot_Interface.LTCK_left_middle_push_pose,robot);
+                Robot_Interface.Robot_MoveJ(Robot_Interface.LTCK_left_middle_pose,robot);
+            }else{
+                //放置识别位姿
+                Robot_Interface.Robot_MoveJ(Robot_Interface.LTCK_fixed_middle_pose,robot);
+            }
         }
         Robot_Interface.Robot_MoveJ(Robot_Interface.pubsh_pose,robot);
     }catch (xmate::ControlException &e) {

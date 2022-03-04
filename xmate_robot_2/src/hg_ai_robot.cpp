@@ -325,5 +325,5 @@ void HG_AI_Robot::clean_ar_data()
 void HG_AI_Robot::clean_ur_data()
 {
     memset(Ur_Pose,0,sizeof(Ur_Pose));
-    std::cout<<"Current ur-data: "<<Ar_Pose<<std::endl;
+    std::cout<<"Current ur-data: "<<Ur_Pose<<std::endl;
 };

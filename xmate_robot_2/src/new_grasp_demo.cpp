@@ -35,12 +35,25 @@ int main(int argc, char *argv[])
     ros::NodeHandle node("~");
     
     double move_sped = 0.2;
+    double move_dev = 0.05;
+    bool ls_grasp_state = false;
+    bool lm_grasp_state = false;
     bool start_moment = false;
     //机械臂移动速度
     node.param("move_sped", move_sped, 0.2);
     //启动力矩监听
     node.param("monitor_state", start_moment, false);
-    
+    // 偏移距离
+    node.param("move_deviation", move_dev, 0.05);
+
+    if(move_dev>0.1){
+        move_dev = 0.1;
+    }
+    if(move_dev<0.01)
+    {
+        move_dev = 0.01;
+    }
+
     //未接收到数据次数
     int no_data_time = 0;
     bool move_left = false;
@@ -52,6 +65,7 @@ int main(int argc, char *argv[])
     Robot_Interface.Jog4_Robot_Moment = 25;
     Robot_Interface.Start_Moment_Thread = start_moment;
 
+    Robot_Interface.Move_Deviation = move_dev;
     //连接机械臂: ip地址　端口号
     xmate::Robot robot(Robot_Interface.ipaddr, Robot_Interface.port);
     sleep(1.0);
@@ -176,19 +190,24 @@ int main(int argc, char *argv[])
         Robot_Interface.Robot_MoveJ(Robot_Interface.grasp_fixed_middle_pose,robot);
         //抓取识别位姿
         Robot_Interface.Robot_MoveJ(Robot_Interface.grasp_identify_pose,robot);
-
+        //清除之前识别到的无用数据
+        Robot_Interface.clean_ar_data();
+        Robot_Interface.clean_ur_data();
+        sleep(0.5);
         /*-----校准角度-----*/
 	    while(Robot_Interface.Ar_Pose[grasp_ar_id[2]][0]==0.0){
             no_data_time +=1;
             if(no_data_time>5 && !move_left){
-                Robot_Interface.Robot_MoveL(0.05,0.0,0.0,robot);
+                Robot_Interface.Robot_MoveL(Robot_Interface.Move_Deviation,0.0,0.0,robot);
                 move_left = true;
                 no_data_time = 0;
             }else if(no_data_time > 5 && !move_right){
                 Robot_Interface.Robot_MoveJ(Robot_Interface.grasp_identify_pose,robot);
-                Robot_Interface.Robot_MoveL(-0.05,0.0,0.0,robot);
+                Robot_Interface.Robot_MoveL(-Robot_Interface.Move_Deviation,0.0,0.0,robot);
                 move_right = true;
                 no_data_time = 0;
+            }else if(move_left && move_right){
+                break;
             }
             ros::spinOnce();
             loop_rate.sleep();
@@ -203,153 +222,154 @@ int main(int argc, char *argv[])
             std::cout<<"move right"<<std::endl;
             move_left = move_right = false;
         }
+        if(Robot_Interface.Ar_Pose[grasp_ar_id[2]][0] !=0.0){
+            sx = Robot_Interface.Ar_Pose[grasp_ar_id[2]][0];
+            sy = Robot_Interface.Ar_Pose[grasp_ar_id[2]][1];
+            sz = Robot_Interface.Ar_Pose[grasp_ar_id[2]][2];
+            ww = Robot_Interface.Ar_Pose[grasp_ar_id[2]][3];
+            wx = Robot_Interface.Ar_Pose[grasp_ar_id[2]][4];
+            wy = Robot_Interface.Ar_Pose[grasp_ar_id[2]][5];
+            wz = Robot_Interface.Ar_Pose[grasp_ar_id[2]][6];
+            
+            std::cout << "初步识别ar坐标：" <<std::endl;
+            std::cout << "datax:" <<sx<<std::endl;
+            std::cout << "datay:" <<sy<<std::endl;
+            std::cout << "dataz:" <<sz<<std::endl;
 
-        sx = Robot_Interface.Ar_Pose[grasp_ar_id[2]][0];
-        sy = Robot_Interface.Ar_Pose[grasp_ar_id[2]][1];
-        sz = Robot_Interface.Ar_Pose[grasp_ar_id[2]][2];
-        ww = Robot_Interface.Ar_Pose[grasp_ar_id[2]][3];
-        wx = Robot_Interface.Ar_Pose[grasp_ar_id[2]][4];
-        wy = Robot_Interface.Ar_Pose[grasp_ar_id[2]][5];
-        wz = Robot_Interface.Ar_Pose[grasp_ar_id[2]][6];
+
+            //构造四元数
+            Eigen::Quaterniond quaternion(ww,wx,wy,wz);
+            //四元数转欧拉角
+            Eigen::Vector3d eulerAngle=quaternion.matrix().eulerAngles(2,1,0);
+            //弧度转角度
+            robot_angle = (eulerAngle(0) * 180) / PI;
+            if(robot_angle > 90.0){
+                    robot_angle = 180.0 - robot_angle;	
+            }
+            if(robot_angle > 90){
+                //  机械臂末端旋转
+                Robot_Interface.Robot_MoveR(-PI/2 + eulerAngle(0), robot);
+            }else{
+                //  机械臂末端旋转
+                Robot_Interface.Robot_MoveR(eulerAngle(0) - PI/2, robot);
+            }
+
+            std::cout<<"AR码角度： "<< robot_angle <<std::endl;
+            sleep(1.0);
+            Robot_Interface.clean_ar_data();
+
+            /*-----初步校准-----*/
+            //等待二维码数据
+            while(Robot_Interface.Ar_Pose[grasp_ar_id[2]][0]==0.0){
+                    ros::spinOnce();
+                    loop_rate.sleep();
+            }
         
-        std::cout << "初步识别ar坐标：" <<std::endl;
-        std::cout << "datax:" <<sx<<std::endl;
-        std::cout << "datay:" <<sy<<std::endl;
-        std::cout << "dataz:" <<sz<<std::endl;
+            sx = Robot_Interface.Ar_Pose[grasp_ar_id[2]][0];
+            sy = Robot_Interface.Ar_Pose[grasp_ar_id[2]][1];
+            sz = Robot_Interface.Ar_Pose[grasp_ar_id[2]][2];
+            ww = Robot_Interface.Ar_Pose[grasp_ar_id[2]][3];
+            wx = Robot_Interface.Ar_Pose[grasp_ar_id[2]][4];
+            wy = Robot_Interface.Ar_Pose[grasp_ar_id[2]][5];
+            wz = Robot_Interface.Ar_Pose[grasp_ar_id[2]][6];
+            //Robot_Interface.clean_ar_data();
+            std::cout << "转动后ar坐标：" <<std::endl;
+            std::cout << "datax:" <<sx<<std::endl;
+            std::cout << "datay:" <<sy<<std::endl;
+            std::cout << "dataz:" <<sz<<std::endl;
 
+            Robot_Interface.Robot_MoveL(sx-0.05,-sy+0.02,0.0,robot);
+            sleep(1.0);
+            Robot_Interface.clean_ar_data();
 
-        //构造四元数
-        Eigen::Quaterniond quaternion(ww,wx,wy,wz);
-        //四元数转欧拉角
-        Eigen::Vector3d eulerAngle=quaternion.matrix().eulerAngles(2,1,0);
-        //弧度转角度
-        robot_angle = (eulerAngle(0) * 180) / PI;
-        if(robot_angle > 90.0){
-	            robot_angle = 180.0 - robot_angle;	
-	    }
-        if(robot_angle > 90){
-            //  机械臂末端旋转
-            Robot_Interface.Robot_MoveR(-PI/2 + eulerAngle(0), robot);
-        }else{
-            //  机械臂末端旋转
-            Robot_Interface.Robot_MoveR(eulerAngle(0) - PI/2, robot);
-        }
-
-        std::cout<<"AR码角度： "<< robot_angle <<std::endl;
-        sleep(1.0);
-	    Robot_Interface.clean_ar_data();
-
-        /*-----初步校准-----*/
-        //等待二维码数据
-	    while(Robot_Interface.Ar_Pose[grasp_ar_id[2]][0]==0.0){
-                ros::spinOnce();
-                loop_rate.sleep();
-        }
-	
-        sx = Robot_Interface.Ar_Pose[grasp_ar_id[2]][0];
-        sy = Robot_Interface.Ar_Pose[grasp_ar_id[2]][1];
-        sz = Robot_Interface.Ar_Pose[grasp_ar_id[2]][2];
-        ww = Robot_Interface.Ar_Pose[grasp_ar_id[2]][3];
-        wx = Robot_Interface.Ar_Pose[grasp_ar_id[2]][4];
-        wy = Robot_Interface.Ar_Pose[grasp_ar_id[2]][5];
-        wz = Robot_Interface.Ar_Pose[grasp_ar_id[2]][6];
-        //Robot_Interface.clean_ar_data();
-        std::cout << "转动后ar坐标：" <<std::endl;
-        std::cout << "datax:" <<sx<<std::endl;
-        std::cout << "datay:" <<sy<<std::endl;
-        std::cout << "dataz:" <<sz<<std::endl;
-
-        Robot_Interface.Robot_MoveL(sx-0.05,-sy+0.02,0.0,robot);
-        sleep(1.0);
-        Robot_Interface.clean_ar_data();
-
-        /*-----二次校准-----*/
-        //等待二维码数据
-	    while(Robot_Interface.Ar_Pose[grasp_ar_id[2]][0]==0.0){
-                ros::spinOnce();
-                loop_rate.sleep();
-        }
-	
-        sx = Robot_Interface.Ar_Pose[grasp_ar_id[2]][0];
-        sy = Robot_Interface.Ar_Pose[grasp_ar_id[2]][1];
-        sz = Robot_Interface.Ar_Pose[grasp_ar_id[2]][2];
-        ww = Robot_Interface.Ar_Pose[grasp_ar_id[2]][3];
-        wx = Robot_Interface.Ar_Pose[grasp_ar_id[2]][4];
-        wy = Robot_Interface.Ar_Pose[grasp_ar_id[2]][5];
-        wz = Robot_Interface.Ar_Pose[grasp_ar_id[2]][6];
-        //Robot_Interface.clean_ar_data();
-        std::cout << "初步平移校准后ar坐标" <<std::endl;
-        std::cout << "datax:" <<sx<<std::endl;
-        std::cout << "datay:" <<sy<<std::endl;
-        std::cout << "dataz:" <<sz<<std::endl;
+            /*-----二次校准-----*/
+            //等待二维码数据
+            while(Robot_Interface.Ar_Pose[grasp_ar_id[2]][0]==0.0){
+                    ros::spinOnce();
+                    loop_rate.sleep();
+            }
         
-        //  机械臂识别精度校准
-        if(sy > 0.0616){
-            sy = (sy - 0.0616);
-            std::cout << sy <<std::endl;
-        }
-        else{
-            sy = -(0.0616 - sy);
-        }
-        if(sx > 0.0035){
-            sx = (sx - 0.0035);
-        }
-        else{
-            sx = -(0.0035 - sx);
-        }
-        Robot_Interface.Robot_MoveL(sx,-sy,0.0,robot);
-        std::cout << "精度计算的坐标平移量" <<std::endl;
-        std::cout << "datax:" <<sx<<std::endl;
-        std::cout << "datay:" <<sy<<std::endl;
-        std::cout << "dataz:" <<sz<<std::endl;
-        sleep(1.0);
-        Robot_Interface.clean_ar_data();
-        
-        /*-----下去抓-----*/
-        while(Robot_Interface.Ar_Pose[grasp_ar_id[2]][0]==0.0){
-                ros::spinOnce();
-                loop_rate.sleep();
-        }
-        sx = Robot_Interface.Ar_Pose[grasp_ar_id[2]][0];
-        sy = Robot_Interface.Ar_Pose[grasp_ar_id[2]][1];
-        sz = Robot_Interface.Ar_Pose[grasp_ar_id[2]][2];
-        ww = Robot_Interface.Ar_Pose[grasp_ar_id[2]][3];
-        wx = Robot_Interface.Ar_Pose[grasp_ar_id[2]][4];
-        wy = Robot_Interface.Ar_Pose[grasp_ar_id[2]][5];
-        wz = Robot_Interface.Ar_Pose[grasp_ar_id[2]][6];
-        //Robot_Interface.clean_ar_data();
-        std::cout << "抓取前ar坐标" <<std::endl;
-        std::cout << "datax:" <<sx<<std::endl;
-        std::cout << "datay:" <<sy<<std::endl;
-        std::cout << "dataz:" <<sz<<std::endl;
-        
-        Robot_Interface.Robot_MoveL(sx-grasp_x,-sy+grasp_y,0.0,robot);
-        Robot_Interface.Robot_MoveL(0.0,0.0,-sz+grasp_z,robot);
-        sleep(1.0);
-        Robot_Interface.clean_ar_data();
-        //关夹爪
-	    bool close_state = Robot_Interface.Robot_Grasp_Control(0,robot);
-        if(close_state){
+            sx = Robot_Interface.Ar_Pose[grasp_ar_id[2]][0];
+            sy = Robot_Interface.Ar_Pose[grasp_ar_id[2]][1];
+            sz = Robot_Interface.Ar_Pose[grasp_ar_id[2]][2];
+            ww = Robot_Interface.Ar_Pose[grasp_ar_id[2]][3];
+            wx = Robot_Interface.Ar_Pose[grasp_ar_id[2]][4];
+            wy = Robot_Interface.Ar_Pose[grasp_ar_id[2]][5];
+            wz = Robot_Interface.Ar_Pose[grasp_ar_id[2]][6];
+            //Robot_Interface.clean_ar_data();
+            std::cout << "初步平移校准后ar坐标" <<std::endl;
+            std::cout << "datax:" <<sx<<std::endl;
+            std::cout << "datay:" <<sy<<std::endl;
+            std::cout << "dataz:" <<sz<<std::endl;
+            
+            //  机械臂识别精度校准
+            if(sy > 0.0616){
+                sy = (sy - 0.0616);
+                std::cout << sy <<std::endl;
+            }
+            else{
+                sy = -(0.0616 - sy);
+            }
+            if(sx > 0.0035){
+                sx = (sx - 0.0035);
+            }
+            else{
+                sx = -(0.0035 - sx);
+            }
+            Robot_Interface.Robot_MoveL(sx,-sy,0.0,robot);
+            std::cout << "精度计算的坐标平移量" <<std::endl;
+            std::cout << "datax:" <<sx<<std::endl;
+            std::cout << "datay:" <<sy<<std::endl;
+            std::cout << "dataz:" <<sz<<std::endl;
+            sleep(1.0);
+            Robot_Interface.clean_ar_data();
+            
+            /*-----下去抓-----*/
+            while(Robot_Interface.Ar_Pose[grasp_ar_id[2]][0]==0.0){
+                    ros::spinOnce();
+                    loop_rate.sleep();
+            }
+            sx = Robot_Interface.Ar_Pose[grasp_ar_id[2]][0];
+            sy = Robot_Interface.Ar_Pose[grasp_ar_id[2]][1];
+            sz = Robot_Interface.Ar_Pose[grasp_ar_id[2]][2];
+            ww = Robot_Interface.Ar_Pose[grasp_ar_id[2]][3];
+            wx = Robot_Interface.Ar_Pose[grasp_ar_id[2]][4];
+            wy = Robot_Interface.Ar_Pose[grasp_ar_id[2]][5];
+            wz = Robot_Interface.Ar_Pose[grasp_ar_id[2]][6];
+            //Robot_Interface.clean_ar_data();
+            std::cout << "抓取前ar坐标" <<std::endl;
+            std::cout << "datax:" <<sx<<std::endl;
+            std::cout << "datay:" <<sy<<std::endl;
+            std::cout << "dataz:" <<sz<<std::endl;
+            
+            Robot_Interface.Robot_MoveL(sx-grasp_x,-sy+grasp_y,0.0,robot);
+            Robot_Interface.Robot_MoveL(0.0,0.0,-sz+grasp_z,robot);
+            sleep(1.0);
+            Robot_Interface.clean_ar_data();
+            //关夹爪
+            bool close_state = Robot_Interface.Robot_Grasp_Control(0,robot);
+            if(close_state){
+                //往上
+                Robot_Interface.Robot_MoveL(0.0,0.0,graspid2_z,robot);
+                Robot_Interface.Robot_MoveJ(Robot_Interface.grasp_identify_pose,robot);
+                //中间位姿
+                Robot_Interface.Robot_MoveJ(Robot_Interface.grasp_fixed_middle_pose,robot);
+                //初始位姿
+                Robot_Interface.Robot_MoveJ(Robot_Interface.pubsh_pose,robot);
+                //放置２号位姿
+                Robot_Interface.Robot_MoveL(graspid2_x,graspid2_y,0.0,robot);
+                //往下
+                Robot_Interface.Robot_MoveL(0.0,0.0,-graspid2_z,robot);
+            }
+            bool open_state = Robot_Interface.Robot_Grasp_Control(1,robot);
             //往上
             Robot_Interface.Robot_MoveL(0.0,0.0,graspid2_z,robot);
-	        Robot_Interface.Robot_MoveJ(Robot_Interface.grasp_identify_pose,robot);
-            //中间位姿
-            Robot_Interface.Robot_MoveJ(Robot_Interface.grasp_fixed_middle_pose,robot);
-            //初始位姿
-            Robot_Interface.Robot_MoveJ(Robot_Interface.pubsh_pose,robot);
-            //放置２号位姿
-            Robot_Interface.Robot_MoveL(graspid2_x,graspid2_y,0.0,robot);
-            //往下
-            Robot_Interface.Robot_MoveL(0.0,0.0,-graspid2_z,robot);
+            if(open_state){
+                //初始位姿
+                Robot_Interface.Robot_MoveJ(Robot_Interface.pubsh_pose,robot);
+                ls_grasp_state = true;
+            }
         }
-	    bool open_state = Robot_Interface.Robot_Grasp_Control(1,robot);
-	    //往上
-        Robot_Interface.Robot_MoveL(0.0,0.0,graspid2_z,robot);
-        if(open_state){
-            //初始位姿
-            Robot_Interface.Robot_MoveJ(Robot_Interface.pubsh_pose,robot);
-        }
-
 /*-----------------------------id1 螺母-----------------------------*/
         //等待AGV到位信号
         // while(AGV_Current_Goal != 2)
@@ -359,23 +379,30 @@ int main(int argc, char *argv[])
         // }
         //速度
         Robot_Interface.Robot_Set_Speed(move_sped,robot);
-        //抓取中间位姿
-        Robot_Interface.Robot_MoveJ(Robot_Interface.grasp_fixed_middle_pose,robot);
-        //抓取识别位姿
-        Robot_Interface.Robot_MoveJ(Robot_Interface.grasp_identify_pose,robot);
-
+        if(ls_grasp_state){
+            //抓取中间位姿
+            Robot_Interface.Robot_MoveJ(Robot_Interface.grasp_fixed_middle_pose,robot);
+            //抓取识别位姿
+            Robot_Interface.Robot_MoveJ(Robot_Interface.grasp_identify_pose,robot);
+        }
+        //清除之前识别到的无用数据
+        Robot_Interface.clean_ar_data();
+        Robot_Interface.clean_ur_data();
+        sleep(0.5);
         /*-----校准角度-----*/
 	    while(Robot_Interface.Ar_Pose[grasp_ar_id[1]][0]==0.0){
             no_data_time +=1;
             if(no_data_time>5 && !move_left){
-                Robot_Interface.Robot_MoveL(0.05,0.0,0.0,robot);
+                Robot_Interface.Robot_MoveL(Robot_Interface.Move_Deviation,0.0,0.0,robot);
                 move_left = true;
                 no_data_time = 0;
             }else if(no_data_time > 5 && !move_right){
                 Robot_Interface.Robot_MoveJ(Robot_Interface.grasp_identify_pose,robot);
-                Robot_Interface.Robot_MoveL(-0.05,0.0,0.0,robot);
+                Robot_Interface.Robot_MoveL(-Robot_Interface.Move_Deviation,0.0,0.0,robot);
                 move_right = true;
                 no_data_time = 0;
+            }else if(move_right and move_left){
+                break;
             }
             ros::spinOnce();
             loop_rate.sleep();
@@ -391,152 +418,158 @@ int main(int argc, char *argv[])
             move_left = move_right = false;
         }
 
-        sx1 = Robot_Interface.Ar_Pose[grasp_ar_id[1]][0];
-        sy1 = Robot_Interface.Ar_Pose[grasp_ar_id[1]][1];
-        sz1 = Robot_Interface.Ar_Pose[grasp_ar_id[1]][2];
-        ww1 = Robot_Interface.Ar_Pose[grasp_ar_id[1]][3];
-        wx1 = Robot_Interface.Ar_Pose[grasp_ar_id[1]][4];
-        wy1 = Robot_Interface.Ar_Pose[grasp_ar_id[1]][5];
-        wz1 = Robot_Interface.Ar_Pose[grasp_ar_id[1]][6];
+        if(Robot_Interface.Ar_Pose[grasp_ar_id[1]][0]!=0.0){
+            sx1 = Robot_Interface.Ar_Pose[grasp_ar_id[1]][0];
+            sy1 = Robot_Interface.Ar_Pose[grasp_ar_id[1]][1];
+            sz1 = Robot_Interface.Ar_Pose[grasp_ar_id[1]][2];
+            ww1 = Robot_Interface.Ar_Pose[grasp_ar_id[1]][3];
+            wx1 = Robot_Interface.Ar_Pose[grasp_ar_id[1]][4];
+            wy1 = Robot_Interface.Ar_Pose[grasp_ar_id[1]][5];
+            wz1 = Robot_Interface.Ar_Pose[grasp_ar_id[1]][6];
+            
+            std::cout << "初步识别ar坐标：" <<std::endl;
+            std::cout << "datax:" <<sx1<<std::endl;
+            std::cout << "datay:" <<sy1<<std::endl;
+            std::cout << "dataz:" <<sz1<<std::endl;
+
+
+            //构造四元数
+            Eigen::Quaterniond quaternion1(ww1,wx1,wy1,wz1);
+            //四元数转欧拉角
+            Eigen::Vector3d eulerAngle1=quaternion1.matrix().eulerAngles(2,1,0);
+            //弧度转角度
+            robot_angle = (eulerAngle1(0) * 180) / PI;
+            if(robot_angle > 90.0){
+                    robot_angle = 180.0 - robot_angle;	
+            }
+            if(robot_angle > 90){
+                //  机械臂末端旋转
+                Robot_Interface.Robot_MoveR(-PI/2 + eulerAngle1(0), robot);
+            }else{
+                //  机械臂末端旋转
+                Robot_Interface.Robot_MoveR(eulerAngle1(0) - PI/2, robot);
+            }
+
+            std::cout<<"AR码角度： "<< robot_angle <<std::endl;
+            sleep(1.0);
+            Robot_Interface.clean_ar_data();
+
+            /*-----初步校准-----*/
+            //等待二维码数据
+            while(Robot_Interface.Ar_Pose[grasp_ar_id[1]][0]==0.0){
+                    ros::spinOnce();
+                    loop_rate.sleep();
+            }
         
-        std::cout << "初步识别ar坐标：" <<std::endl;
-        std::cout << "datax:" <<sx1<<std::endl;
-        std::cout << "datay:" <<sy1<<std::endl;
-        std::cout << "dataz:" <<sz1<<std::endl;
+            sx1 = Robot_Interface.Ar_Pose[grasp_ar_id[1]][0];
+            sy1 = Robot_Interface.Ar_Pose[grasp_ar_id[1]][1];
+            sz1 = Robot_Interface.Ar_Pose[grasp_ar_id[1]][2];
+            ww1 = Robot_Interface.Ar_Pose[grasp_ar_id[1]][3];
+            wx1 = Robot_Interface.Ar_Pose[grasp_ar_id[1]][4];
+            wy1 = Robot_Interface.Ar_Pose[grasp_ar_id[1]][5];
+            wz1 = Robot_Interface.Ar_Pose[grasp_ar_id[1]][6];
+            //Robot_Interface.clean_ar_data();
+            std::cout << "转动后ar坐标：" <<std::endl;
+            std::cout << "datax:" <<sx1<<std::endl;
+            std::cout << "datay:" <<sy1<<std::endl;
+            std::cout << "dataz:" <<sz1<<std::endl;
 
+            Robot_Interface.Robot_MoveL(sx1-0.05,-sy1+0.02,0.0,robot);
+            sleep(1.0);
+            Robot_Interface.clean_ar_data();
 
-        //构造四元数
-        Eigen::Quaterniond quaternion1(ww1,wx1,wy1,wz1);
-        //四元数转欧拉角
-        Eigen::Vector3d eulerAngle1=quaternion1.matrix().eulerAngles(2,1,0);
-        //弧度转角度
-        robot_angle = (eulerAngle1(0) * 180) / PI;
-        if(robot_angle > 90.0){
-	            robot_angle = 180.0 - robot_angle;	
-	    }
-        if(robot_angle > 90){
-            //  机械臂末端旋转
-            Robot_Interface.Robot_MoveR(-PI/2 + eulerAngle1(0), robot);
-        }else{
-            //  机械臂末端旋转
-            Robot_Interface.Robot_MoveR(eulerAngle1(0) - PI/2, robot);
-        }
-
-        std::cout<<"AR码角度： "<< robot_angle <<std::endl;
-        sleep(1.0);
-	    Robot_Interface.clean_ar_data();
-
-        /*-----初步校准-----*/
-        //等待二维码数据
-	    while(Robot_Interface.Ar_Pose[grasp_ar_id[1]][0]==0.0){
-                ros::spinOnce();
-                loop_rate.sleep();
-        }
-	
-        sx1 = Robot_Interface.Ar_Pose[grasp_ar_id[1]][0];
-        sy1 = Robot_Interface.Ar_Pose[grasp_ar_id[1]][1];
-        sz1 = Robot_Interface.Ar_Pose[grasp_ar_id[1]][2];
-        ww1 = Robot_Interface.Ar_Pose[grasp_ar_id[1]][3];
-        wx1 = Robot_Interface.Ar_Pose[grasp_ar_id[1]][4];
-        wy1 = Robot_Interface.Ar_Pose[grasp_ar_id[1]][5];
-        wz1 = Robot_Interface.Ar_Pose[grasp_ar_id[1]][6];
-        //Robot_Interface.clean_ar_data();
-        std::cout << "转动后ar坐标：" <<std::endl;
-        std::cout << "datax:" <<sx1<<std::endl;
-        std::cout << "datay:" <<sy1<<std::endl;
-        std::cout << "dataz:" <<sz1<<std::endl;
-
-        Robot_Interface.Robot_MoveL(sx1-0.05,-sy1+0.02,0.0,robot);
-        sleep(1.0);
-        Robot_Interface.clean_ar_data();
-
-        /*-----二次校准-----*/
-        //等待二维码数据
-	    while(Robot_Interface.Ar_Pose[grasp_ar_id[1]][0]==0.0){
-                ros::spinOnce();
-                loop_rate.sleep();
-        }
-	
-        sx1 = Robot_Interface.Ar_Pose[grasp_ar_id[1]][0];
-        sy1 = Robot_Interface.Ar_Pose[grasp_ar_id[1]][1];
-        sz1 = Robot_Interface.Ar_Pose[grasp_ar_id[1]][2];
-        ww1 = Robot_Interface.Ar_Pose[grasp_ar_id[1]][3];
-        wx1 = Robot_Interface.Ar_Pose[grasp_ar_id[1]][4];
-        wy1 = Robot_Interface.Ar_Pose[grasp_ar_id[1]][5];
-        wz1 = Robot_Interface.Ar_Pose[grasp_ar_id[1]][6];
-        //Robot_Interface.clean_ar_data();
-        std::cout << "初步平移校准后ar坐标" <<std::endl;
-        std::cout << "datax:" <<sx1<<std::endl;
-        std::cout << "datay:" <<sy1<<std::endl;
-        std::cout << "dataz:" <<sz1<<std::endl;
+            /*-----二次校准-----*/
+            //等待二维码数据
+            while(Robot_Interface.Ar_Pose[grasp_ar_id[1]][0]==0.0){
+                    ros::spinOnce();
+                    loop_rate.sleep();
+            }
         
-        //  机械臂识别精度校准
-        if(sy1 > 0.0616){
-            sy1 = (sy1 - 0.0616);
-            std::cout << sy1 <<std::endl;
-        }
-        else{
-            sy1 = -(0.0616 - sy1);
-        }
-        if(sx1 > 0.0035){
-            sx1 = (sx1 - 0.0035);
-        }
-        else{
-            sx1 = -(0.0035 - sx1);
-        }
-        Robot_Interface.Robot_MoveL(sx1,-sy1,0.0,robot);
-        std::cout << "精度计算的坐标平移量" <<std::endl;
-        std::cout << "datax:" <<sx1<<std::endl;
-        std::cout << "datay:" <<sy1<<std::endl;
-        std::cout << "dataz:" <<sz1<<std::endl;
-        sleep(1.0);
-        Robot_Interface.clean_ar_data();
-        
-        /*-----下去抓-----*/
-        while(Robot_Interface.Ar_Pose[grasp_ar_id[1]][0]==0.0){
-                ros::spinOnce();
-                loop_rate.sleep();
-        }
-        sx1 = Robot_Interface.Ar_Pose[grasp_ar_id[1]][0];
-        sy1 = Robot_Interface.Ar_Pose[grasp_ar_id[1]][1];
-        sz1 = Robot_Interface.Ar_Pose[grasp_ar_id[1]][2];
-        ww1 = Robot_Interface.Ar_Pose[grasp_ar_id[1]][3];
-        wx1 = Robot_Interface.Ar_Pose[grasp_ar_id[1]][4];
-        wy1 = Robot_Interface.Ar_Pose[grasp_ar_id[1]][5];
-        wz1 = Robot_Interface.Ar_Pose[grasp_ar_id[1]][6];
-        //Robot_Interface.clean_ar_data();
-        std::cout << "抓取前ar坐标" <<std::endl;
-        std::cout << "datax:" <<sx1<<std::endl;
-        std::cout << "datay:" <<sy1<<std::endl;
-        std::cout << "dataz:" <<sz1<<std::endl;
-        
-        Robot_Interface.Robot_MoveL(sx1-grasp_x,-sy1+grasp_y,0.0,robot);
-        Robot_Interface.Robot_MoveL(0.0,0.0,-sz1+grasp_z,robot);
-        sleep(1.0);
-        Robot_Interface.clean_ar_data();
-        //关夹爪
-	    bool close_state1 = Robot_Interface.Robot_Grasp_Control(0,robot);
-        if(close_state1){
+            sx1 = Robot_Interface.Ar_Pose[grasp_ar_id[1]][0];
+            sy1 = Robot_Interface.Ar_Pose[grasp_ar_id[1]][1];
+            sz1 = Robot_Interface.Ar_Pose[grasp_ar_id[1]][2];
+            ww1 = Robot_Interface.Ar_Pose[grasp_ar_id[1]][3];
+            wx1 = Robot_Interface.Ar_Pose[grasp_ar_id[1]][4];
+            wy1 = Robot_Interface.Ar_Pose[grasp_ar_id[1]][5];
+            wz1 = Robot_Interface.Ar_Pose[grasp_ar_id[1]][6];
+            //Robot_Interface.clean_ar_data();
+            std::cout << "初步平移校准后ar坐标" <<std::endl;
+            std::cout << "datax:" <<sx1<<std::endl;
+            std::cout << "datay:" <<sy1<<std::endl;
+            std::cout << "dataz:" <<sz1<<std::endl;
+            
+            //  机械臂识别精度校准
+            if(sy1 > 0.0616){
+                sy1 = (sy1 - 0.0616);
+                std::cout << sy1 <<std::endl;
+            }
+            else{
+                sy1 = -(0.0616 - sy1);
+            }
+            if(sx1 > 0.0035){
+                sx1 = (sx1 - 0.0035);
+            }
+            else{
+                sx1 = -(0.0035 - sx1);
+            }
+            Robot_Interface.Robot_MoveL(sx1,-sy1,0.0,robot);
+            std::cout << "精度计算的坐标平移量" <<std::endl;
+            std::cout << "datax:" <<sx1<<std::endl;
+            std::cout << "datay:" <<sy1<<std::endl;
+            std::cout << "dataz:" <<sz1<<std::endl;
+            sleep(1.0);
+            Robot_Interface.clean_ar_data();
+            
+            /*-----下去抓-----*/
+            while(Robot_Interface.Ar_Pose[grasp_ar_id[1]][0]==0.0){
+                    ros::spinOnce();
+                    loop_rate.sleep();
+            }
+            sx1 = Robot_Interface.Ar_Pose[grasp_ar_id[1]][0];
+            sy1 = Robot_Interface.Ar_Pose[grasp_ar_id[1]][1];
+            sz1 = Robot_Interface.Ar_Pose[grasp_ar_id[1]][2];
+            ww1 = Robot_Interface.Ar_Pose[grasp_ar_id[1]][3];
+            wx1 = Robot_Interface.Ar_Pose[grasp_ar_id[1]][4];
+            wy1 = Robot_Interface.Ar_Pose[grasp_ar_id[1]][5];
+            wz1 = Robot_Interface.Ar_Pose[grasp_ar_id[1]][6];
+            //Robot_Interface.clean_ar_data();
+            std::cout << "抓取前ar坐标" <<std::endl;
+            std::cout << "datax:" <<sx1<<std::endl;
+            std::cout << "datay:" <<sy1<<std::endl;
+            std::cout << "dataz:" <<sz1<<std::endl;
+            
+            Robot_Interface.Robot_MoveL(sx1-grasp_x,-sy1+grasp_y,0.0,robot);
+            Robot_Interface.Robot_MoveL(0.0,0.0,-sz1+grasp_z,robot);
+            sleep(1.0);
+            Robot_Interface.clean_ar_data();
+            //关夹爪
+            bool close_state1 = Robot_Interface.Robot_Grasp_Control(0,robot);
+            if(close_state1){
+                //往上
+                Robot_Interface.Robot_MoveL(0.0,0.0,graspid2_z,robot);
+                Robot_Interface.Robot_MoveJ(Robot_Interface.grasp_identify_pose,robot);
+                //中间位姿
+                Robot_Interface.Robot_MoveJ(Robot_Interface.grasp_fixed_middle_pose,robot);
+                //初始位姿
+                Robot_Interface.Robot_MoveJ(Robot_Interface.pubsh_pose,robot);
+                //放置２号位姿
+                Robot_Interface.Robot_MoveL(graspid1_x,graspid1_y,0.0,robot);
+                //往下
+                Robot_Interface.Robot_MoveL(0.0,0.0,-graspid1_z,robot);
+            }
+            bool open_state1 = Robot_Interface.Robot_Grasp_Control(1,robot);
             //往上
-            Robot_Interface.Robot_MoveL(0.0,0.0,graspid2_z,robot);
-	        Robot_Interface.Robot_MoveJ(Robot_Interface.grasp_identify_pose,robot);
-            //中间位姿
+            Robot_Interface.Robot_MoveL(0.0,0.0,graspid1_z,robot);
+            if(open_state1){
+                //初始位姿
+                Robot_Interface.Robot_MoveJ(Robot_Interface.pubsh_pose,robot);
+                lm_grasp_state = true;
+            }
+        }
+        if(ls_grasp_state==false || lm_grasp_state == false){
             Robot_Interface.Robot_MoveJ(Robot_Interface.grasp_fixed_middle_pose,robot);
-            //初始位姿
-            Robot_Interface.Robot_MoveJ(Robot_Interface.pubsh_pose,robot);
-            //放置２号位姿
-            Robot_Interface.Robot_MoveL(graspid1_x,graspid1_y,0.0,robot);
-            //往下
-            Robot_Interface.Robot_MoveL(0.0,0.0,-graspid1_z,robot);
-        }
-	    bool open_state1 = Robot_Interface.Robot_Grasp_Control(1,robot);
-	    //往上
-        Robot_Interface.Robot_MoveL(0.0,0.0,graspid1_z,robot);
-        if(open_state1){
-            //初始位姿
             Robot_Interface.Robot_MoveJ(Robot_Interface.pubsh_pose,robot);
         }
-
     }catch (xmate::ControlException &e) {
         std::cout << e.what() << std::endl;
     }

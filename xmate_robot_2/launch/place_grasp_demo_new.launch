@@ -2,7 +2,7 @@
 
 <launch>
   <!--
-    语音抓取需要将
+    语音抓取放置需要将
     type="place_grasp_demo_new"
     更改为
     type="voice_grasp_place"
@@ -20,6 +20,14 @@
 
     <!--设置机械臂运行速度-->
     <param name="move_sped" value="0.2"/>
+
+    <!--偏移距离，单位m,范围[0.01 - 0.1] -->
+    <param name="move_deviation" value="0.05"/>
+
+    <!--jog0,力矩,单位:N-->
+    <param name="jog0_moment" value="4.0"/>
+    <!--jog4,力矩,单位:N-->
+    <param name="jog4_moment" value="30.0"/>
 
     <!-- 中转台抓取物料参数 -->
     <!-- 抓取物料时机械臂的x坐标偏移量(笛卡尔坐标系)，增大往左(默认：0.018) -->

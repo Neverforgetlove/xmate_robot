@@ -35,16 +35,28 @@ int main(int argc, char *argv[])
     ros::NodeHandle node("~");
 
     double move_sped = 0.2;
+    double move_dev = 0.05;
     bool start_moment = false;
     //机械臂移动速度
     node.param("move_sped", move_sped, 0.2);
     //启动力矩监听
     node.param("monitor_state", start_moment, false);
+    // 偏移距离
+    node.param("move_deviation", move_dev, 0.05);
     
+    if(move_dev>0.1){
+        move_dev = 0.1;
+    }
+    if(move_dev<0.01)
+    {
+        move_dev = 0.01;
+    }
+
     //初始化
     HG_AI_Robot Robot_Interface;
     Robot_Interface.Jog0_Robot_Moment = 3;
     Robot_Interface.Jog4_Robot_Moment = 25;
+    Robot_Interface.Move_Deviation = move_dev;
     Robot_Interface.Start_Moment_Thread = start_moment;
     //连接机械臂: ip地址　端口号
     xmate::Robot robot(Robot_Interface.ipaddr, Robot_Interface.port);
@@ -188,17 +200,22 @@ int main(int argc, char *argv[])
         Robot_Interface.Robot_MoveJ(Robot_Interface.place_fixed_middle_pose,robot);
         //抓取识别位姿
         Robot_Interface.Robot_MoveJ(Robot_Interface.place_identify_pose,robot);
+        
+        //清除之前识别到的无用数据
+        Robot_Interface.clean_ar_data();
+        Robot_Interface.clean_ur_data();
+        sleep(0.5);
 
         /*-----校准角度-----*/
 	    while(Robot_Interface.Ar_Pose[LM_ID][0]==0.0){
             no_data_time +=1;
             if(no_data_time>5 && !move_left){
-                Robot_Interface.Robot_MoveL(0.05,0.0,0.0,robot);
+                Robot_Interface.Robot_MoveL(Robot_Interface.Move_Deviation,0.0,0.0,robot);
                 move_left = true;
                 no_data_time = 0;
             }else if(no_data_time > 5 && !move_right){
                 Robot_Interface.Robot_MoveJ(Robot_Interface.place_identify_pose,robot);
-                Robot_Interface.Robot_MoveL(-0.05,0.0,0.0,robot);
+                Robot_Interface.Robot_MoveL(-Robot_Interface.Move_Deviation,0.0,0.0,robot);
                 move_right = true;
                 no_data_time = 0;
             }
@@ -358,12 +375,12 @@ int main(int argc, char *argv[])
         if (move_left && !move_right)
         {
             std::cout<<"move left"<<std::endl;
-            Robot_Interface.Robot_MoveL(0.05,0.0,0.0,robot);
+            Robot_Interface.Robot_MoveL(Robot_Interface.Move_Deviation,0.0,0.0,robot);
             move_left = move_right = false;
         }else if(move_left && move_right)
         {
             std::cout<<"move right"<<std::endl;
-            Robot_Interface.Robot_MoveL(-0.05,0.0,0.0,robot);
+            Robot_Interface.Robot_MoveL(-Robot_Interface.Move_Deviation,0.0,0.0,robot);
             move_left = move_right = false;
         }
 
@@ -380,16 +397,22 @@ int main(int argc, char *argv[])
         }
 
 /*-----------------------------id1 螺丝-----------------------------*/
+
+        //清除之前识别到的无用数据
+        Robot_Interface.clean_ar_data();
+        Robot_Interface.clean_ur_data();
+        sleep(0.5);
+
         /*-----校准角度-----*/
 	    while(Robot_Interface.Ar_Pose[LS_ID][0]==0.0){
             no_data_time +=1;
             if(no_data_time>5 && !move_left){
-                Robot_Interface.Robot_MoveL(0.05,0.0,0.0,robot);
+                Robot_Interface.Robot_MoveL(Robot_Interface.Move_Deviation,0.0,0.0,robot);
                 move_left = true;
                 no_data_time = 0;
             }else if(no_data_time > 5 && !move_right){
                 Robot_Interface.Robot_MoveJ(Robot_Interface.place_identify_pose,robot);
-                Robot_Interface.Robot_MoveL(-0.05,0.0,0.0,robot);
+                Robot_Interface.Robot_MoveL(-Robot_Interface.Move_Deviation,0.0,0.0,robot);
                 move_right = true;
                 no_data_time = 0;
             }
@@ -548,12 +571,12 @@ int main(int argc, char *argv[])
         if (move_left && !move_right)
         {
             std::cout<<"move left"<<std::endl;
-            Robot_Interface.Robot_MoveL(0.05,0.0,0.0,robot);
+            Robot_Interface.Robot_MoveL(Robot_Interface.Move_Deviation,0.0,0.0,robot);
             move_left = move_right = false;
         }else if(move_left && move_right)
         {
             std::cout<<"move right"<<std::endl;
-            Robot_Interface.Robot_MoveL(-0.05,0.0,0.0,robot);
+            Robot_Interface.Robot_MoveL(-Robot_Interface.Move_Deviation,0.0,0.0,robot);
             move_left = move_right = false;
         }
 
@@ -585,15 +608,21 @@ int main(int argc, char *argv[])
         Robot_Interface.Robot_MoveJ(Robot_Interface.place_identify_pose,robot);
         
         sleep(1.0);
+
+        //清除之前识别到的无用数据
+        Robot_Interface.clean_ar_data();
+        Robot_Interface.clean_ur_data();
+        sleep(0.5);
+
         while(Robot_Interface.Ur_Pose[0][0]==0.0){
             no_data_time +=1;
             if(no_data_time>5 && !move_left){
-                Robot_Interface.Robot_MoveL(0.05,0.0,0.0,robot);
+                Robot_Interface.Robot_MoveL(Robot_Interface.Move_Deviation,0.0,0.0,robot);
                 move_left = true;
                 no_data_time = 0;
             }else if(no_data_time > 5 && !move_right){
                 Robot_Interface.Robot_MoveJ(Robot_Interface.place_identify_pose,robot);
-                Robot_Interface.Robot_MoveL(-0.05,0.0,0.0,robot);
+                Robot_Interface.Robot_MoveL(-Robot_Interface.Move_Deviation,0.0,0.0,robot);
                 move_right = true;
                 no_data_time = 0;
             }
@@ -751,12 +780,12 @@ int main(int argc, char *argv[])
         if (move_left && !move_right)
         {
             std::cout<<"move left"<<std::endl;
-            Robot_Interface.Robot_MoveL(0.05,0.0,0.0,robot);
+            Robot_Interface.Robot_MoveL(Robot_Interface.Move_Deviation,0.0,0.0,robot);
             move_left = move_right = false;
         }else if(move_left && move_right)
         {
             std::cout<<"move right"<<std::endl;
-            Robot_Interface.Robot_MoveL(-0.05,0.0,0.0,robot);
+            Robot_Interface.Robot_MoveL(-Robot_Interface.Move_Deviation,0.0,0.0,robot);
             move_left = move_right = false;
         }
         Robot_Interface.Robot_MoveR(robot_angle, robot);

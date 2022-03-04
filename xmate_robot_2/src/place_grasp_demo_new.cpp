@@ -1,6 +1,8 @@
 #include "ros/ros.h"
 #include "hg_ai_robot.h"
 #include "hg_ai_robot.cpp"
+#include <boost/shared_ptr.hpp>
+
 //宏定义max min函数
 #define max(a,b) ((a) > (b) ? (a) : (b))
 #define min(a,b) ((a) < (b) ? (a) : (b))
@@ -35,17 +37,53 @@ int main(int argc, char *argv[])
     ros::NodeHandle node("~");
 
     double move_sped = 0.2;
+    //货仓位置
+    int arcodeid = 0;
+    int push_id = 0;
+    double move_dev = 0.05;
     bool start_moment = false;
+
+    //力矩限制大小
+    double jog0_moment = 3.0;
+    double jog4_moment = 25.0;
+
     //机械臂移动速度
     node.param("move_sped", move_sped, 0.2);
     //启动力矩监听
     node.param("monitor_state", start_moment, false);
-    
+    // 偏移距离
+    node.param("move_deviation", move_dev, 0.05);
+    //立体仓库放置序号
+    node.param("arcodeid", arcodeid, 2);
+
+    //jog1力矩
+    node.param("jog0_moment", jog0_moment, 4.0);
+    //jog4力矩
+    node.param("jog4_moment", jog4_moment, 30.0);
+
+    push_id = arcodeid;
+    // 如果放置0,1号位，启动力矩监听线程
+    if(arcodeid == 0 || arcodeid == 1)
+    {
+        start_moment = true;
+    }
+
+    if(move_dev>0.1){
+        move_dev = 0.1;
+    }
+    if(move_dev<0.01)
+    {
+        move_dev = 0.01;
+    }
+
     //初始化
     HG_AI_Robot Robot_Interface;
-    Robot_Interface.Jog0_Robot_Moment = 3;
-    Robot_Interface.Jog4_Robot_Moment = 25;
+    Robot_Interface.Jog0_Robot_Moment = jog0_moment;
+    Robot_Interface.Jog4_Robot_Moment = jog4_moment;
     Robot_Interface.Start_Moment_Thread = start_moment;
+    Robot_Interface.Move_Deviation = move_dev;
+    //暂停力矩监听线程，等到立体仓库开启
+    Robot_Interface.Stop_Moment_Thread = true;
 
     //未接收到数据次数
     int no_data_time = 0;
@@ -104,8 +142,6 @@ int main(int argc, char *argv[])
     int LM_ID = 1;
     int BJJ_ID = 2;
 
-    //货仓位置
-    int arcodeid = 0;
     int ID_Name[4] = {4,6,7,8};   
 
     //  抓取物料偏移量
@@ -147,6 +183,8 @@ int main(int argc, char *argv[])
     const double PI = 3.14159;
     std::array<double, 7> q_init;
 
+    boost::shared_ptr<geometry_msgs::PoseStamped const> msg;
+
     std_msgs::Int32 arm_state;
 
     // // 机械臂抓取识别位姿
@@ -175,8 +213,6 @@ int main(int argc, char *argv[])
     node.param("LS_ID", LS_ID, 0);
     node.param("LM_ID", LM_ID, 1);
     node.param("BJJ_ID", BJJ_ID, 2);
-
-    node.param("arcodeid", arcodeid, 2);
 
     // 设置抓取物料参数
     node.param("grasp_x", grasp_x, 0.020);  // 抓取物料时机械臂的x坐标偏移量(笛卡尔坐标系)，增大往左
@@ -279,7 +315,6 @@ int main(int argc, char *argv[])
     ros::Publisher assemble_pub = n.advertise<std_msgs::Int32>("AssembleDone", 1000);
     ros::Subscriber assstand_flag = n.subscribe("AssStand_state", 1, ZPT_CallBack);
 
-    Robot_Interface.Stop_Moment_Thread = true;
     //等待AGV到位信号
 	while(AGV_Current_Goal != 1)
     {
@@ -302,7 +337,7 @@ int main(int argc, char *argv[])
                     no_data_time +=1;
                     if(no_data_time>5 && !move_left){
                         std::cout<<"move left"<<std::endl;
-                        Robot_Interface.Robot_MoveL(0.05,0.0,0.0,robot);
+                        Robot_Interface.Robot_MoveL(Robot_Interface.Move_Deviation,0.0,0.0,robot);
                         move_left = true;
                         no_data_time = 0;
                         break;
@@ -319,13 +354,18 @@ int main(int argc, char *argv[])
                         Robot_Interface.Robot_MoveL(0.0,0.0,0.01,robot);
                         Robot_Interface.Robot_MoveJ(Robot_Interface.grasp_identify_pose,robot);
                         std::cout<<"move right"<<std::endl;
-                        Robot_Interface.Robot_MoveL(-0.05,0.0,0.0,robot);
+                        Robot_Interface.Robot_MoveL(-Robot_Interface.Move_Deviation,0.0,0.0,robot);
                         move_right = true;
                         no_data_time = 0;
                         break;
                     }
                 }
             }
+
+            //清除之前识别到的无用数据
+            Robot_Interface.clean_ar_data();
+            Robot_Interface.clean_ur_data();
+            sleep(0.5);
 
             while(Robot_Interface.Ar_Pose[grasp_ar_id[1]][0]==0.0){
 			
@@ -490,6 +530,11 @@ int main(int argc, char *argv[])
                 }
             }
 
+            //清除之前识别到的无用数据
+            Robot_Interface.clean_ar_data();
+            Robot_Interface.clean_ur_data();
+            sleep(0.5);
+
             while(Robot_Interface.Ar_Pose[grasp_ar_id[0]][0]==0.0){
 			
 			if(wait_time >3){
@@ -652,29 +697,42 @@ int main(int argc, char *argv[])
                     Robot_Interface.Robot_MoveJ(Robot_Interface.grasp_identify_pose,robot);
                 }
             }
+            //清除之前识别到的无用数据
+            Robot_Interface.clean_ur_data();
+            Robot_Interface.clean_ar_data();
+            sleep(2.0);
 
-            while(Robot_Interface.Ur_Pose[0][0]==0.0){
+            msg = ros::topic::waitForMessage<geometry_msgs::PoseStamped>("/aruco_single/pose", ros::Duration(2));
+            // while(Robot_Interface.Ur_Pose[0][0]==0){
 			
-			if(wait_time >3){
-			   wait_time = 0;
-			   break;		
-			}
-			wait_time += 1;
-                        ros::spinOnce();
-                        loop_rate.sleep();
-			sleep(0.5);
+            //     if(wait_time >3){
+            //         wait_time = 0;
+            //         break;		
+            //     }
+            //     wait_time += 1;
+            //     ros::spinOnce();
+            //     loop_rate.sleep();
+            //     sleep(0.5);
 
-            }
-            if(Robot_Interface.Ur_Pose[0][0]!=0.0 && BJJ_Grasp == false)
+            // }
+            // if(msg && Robot_Interface.Ur_Pose[0][0]!=0.0 && BJJ_Grasp == false)
+            if(msg && BJJ_Grasp == false)
             {
 		        BJJ_Grasp = true;
-                sx = Robot_Interface.Ur_Pose[0][0];
-                sy = Robot_Interface.Ur_Pose[0][1];
-                sz = Robot_Interface.Ur_Pose[0][2];
-                ww = Robot_Interface.Ur_Pose[0][3];
-                wx = Robot_Interface.Ur_Pose[0][4];
-                wy = Robot_Interface.Ur_Pose[0][5];
-                wz = Robot_Interface.Ur_Pose[0][6];
+                // sx = Robot_Interface.Ur_Pose[0][0];
+                // sy = Robot_Interface.Ur_Pose[0][1];
+                // sz = Robot_Interface.Ur_Pose[0][2];
+                // ww = Robot_Interface.Ur_Pose[0][3];
+                // wx = Robot_Interface.Ur_Pose[0][4];
+                // wy = Robot_Interface.Ur_Pose[0][5];
+                // wz = Robot_Interface.Ur_Pose[0][6];
+                sx = msg->pose.position.x; //Robot_Interface.Ur_Pose[0][0];
+                sy = msg->pose.position.y; //Robot_Interface.Ur_Pose[0][1];
+                sz = msg->pose.position.z; //Robot_Interface.Ur_Pose[0][2];
+                ww = msg->pose.orientation.w; //Robot_Interface.Ur_Pose[0][3];
+                wx = msg->pose.orientation.x; //Robot_Interface.Ur_Pose[0][4];
+                wy = msg->pose.orientation.y; //Robot_Interface.Ur_Pose[0][5];
+                wz = msg->pose.orientation.z; //Robot_Interface.Ur_Pose[0][6];
                 std::cout << "初步识别ar坐标：" <<std::endl;
                 std::cout << "datax:" <<sx<<std::endl;
                 std::cout << "datay:" <<sy<<std::endl;
@@ -842,7 +900,7 @@ int main(int argc, char *argv[])
                     no_data_time +=1;
                     if(no_data_time>5 && !move_left){
                         std::cout<<"move left"<<std::endl;
-                        Robot_Interface.Robot_MoveL(0.05,0.0,0.0,robot);
+                        Robot_Interface.Robot_MoveL(Robot_Interface.Move_Deviation,0.0,0.0,robot);
                         move_left = true;
                         no_data_time = 0;
                         break;
@@ -858,7 +916,7 @@ int main(int argc, char *argv[])
                         Robot_Interface.Robot_MoveL(0.0,0.0,0.01,robot);
                         Robot_Interface.Robot_MoveJ(Robot_Interface.grasp_identify_pose,robot);
                         std::cout<<"move right"<<std::endl;
-                        Robot_Interface.Robot_MoveL(-0.05,0.0,0.0,robot);
+                        Robot_Interface.Robot_MoveL(-Robot_Interface.Move_Deviation,0.0,0.0,robot);
                         move_right = true;
                         no_data_time = 0;
                         break;
@@ -866,16 +924,21 @@ int main(int argc, char *argv[])
                 }
             }
 
+            //清除之前识别到的无用数据
+            Robot_Interface.clean_ar_data();
+            Robot_Interface.clean_ur_data();
+            sleep(0.5);
+
             while(Robot_Interface.Ar_Pose[grasp_ar_id[1]][0]==0.0){
 			
-			if(wait_time >3){
-			   wait_time = 0;
-			   break;		
-			}
-			wait_time += 1;
-                        ros::spinOnce();
-                        loop_rate.sleep();
-			sleep(0.5);
+                if(wait_time >3){
+                    wait_time = 0;
+                    break;		
+                }
+                wait_time += 1;
+                ros::spinOnce();
+                loop_rate.sleep();
+                sleep(0.5);
 
             }
             if(Robot_Interface.Ar_Pose[grasp_ar_id[1]][0]!=0.0 && LS_Grasp == false)
@@ -1029,16 +1092,21 @@ int main(int argc, char *argv[])
                 }
             }
 
+            //清除之前识别到的无用数据
+            Robot_Interface.clean_ar_data();
+            Robot_Interface.clean_ur_data();
+            sleep(0.5);
+
             while(Robot_Interface.Ar_Pose[grasp_ar_id[0]][0]==0.0){
 			
-			if(wait_time >3){
-			   wait_time = 0;
-			   break;		
-			}
-			wait_time += 1;
-            ros::spinOnce();
-            loop_rate.sleep();
-			sleep(0.5);
+                if(wait_time >3){
+                    wait_time = 0;
+                    break;		
+                }
+                wait_time += 1;
+                ros::spinOnce();
+                loop_rate.sleep();
+                sleep(0.5);
 
             }
             if(Robot_Interface.Ar_Pose[grasp_ar_id[0]][0]!=0.0 && LM_Grasp == false)
@@ -1192,28 +1260,38 @@ int main(int argc, char *argv[])
                 }
             }
 
-            while(Robot_Interface.Ur_Pose[0][0]==0.0){
-			
-			if(wait_time >3){
-			   wait_time = 0;
-			   break;		
-			}
-			wait_time += 1;
-                        ros::spinOnce();
-                        loop_rate.sleep();
-			sleep(0.5);
+            //清除之前识别到的无用数据
+            Robot_Interface.clean_ur_data();
+            Robot_Interface.clean_ar_data();
+            Robot_Interface.Ur_Pose[0][0]=0;
+            sleep(2.0);
 
-            }
-            if(Robot_Interface.Ur_Pose[0][0]!=0.0 && BJJ_Grasp == false)
+            msg = ros::topic::waitForMessage<geometry_msgs::PoseStamped>("/aruco_single/pose", ros::Duration(2));
+
+            // while(Robot_Interface.Ur_Pose[0][0]==0.0){
+			
+            //     if(wait_time >3){
+            //         wait_time = 0;
+            //         break;		
+            //     }
+            //     wait_time += 1;
+            //     ros::spinOnce();
+            //     loop_rate.sleep();
+            //     sleep(0.5);
+
+            // }
+            
+            // if(msg && Robot_Interface.Ur_Pose[0][0]!=0.0 && BJJ_Grasp == false)
+            if(msg && BJJ_Grasp == false)
             {	
 		        BJJ_Grasp = true;
-                sx = Robot_Interface.Ur_Pose[0][0];
-                sy = Robot_Interface.Ur_Pose[0][1];
-                sz = Robot_Interface.Ur_Pose[0][2];
-                ww = Robot_Interface.Ur_Pose[0][3];
-                wx = Robot_Interface.Ur_Pose[0][4];
-                wy = Robot_Interface.Ur_Pose[0][5];
-                wz = Robot_Interface.Ur_Pose[0][6];
+                sx = msg->pose.position.x; //Robot_Interface.Ur_Pose[0][0];
+                sy = msg->pose.position.y; //Robot_Interface.Ur_Pose[0][1];
+                sz = msg->pose.position.z; //Robot_Interface.Ur_Pose[0][2];
+                ww = msg->pose.orientation.w; //Robot_Interface.Ur_Pose[0][3];
+                wx = msg->pose.orientation.x; //Robot_Interface.Ur_Pose[0][4];
+                wy = msg->pose.orientation.y; //Robot_Interface.Ur_Pose[0][5];
+                wz = msg->pose.orientation.z; //Robot_Interface.Ur_Pose[0][6];
                 std::cout << "初步识别ar坐标：" <<std::endl;
                 std::cout << "datax:" <<sx<<std::endl;
                 std::cout << "datay:" <<sy<<std::endl;
@@ -1385,17 +1463,22 @@ int main(int argc, char *argv[])
         //抓取识别位姿
         Robot_Interface.Robot_MoveJ(Robot_Interface.place_identify_pose,robot);
 
+        //清除之前识别到的无用数据
+        Robot_Interface.clean_ar_data();
+        Robot_Interface.clean_ur_data();
+        sleep(0.5);
+
         /*-----校准角度-----*/
 	    while(Robot_Interface.Ar_Pose[LM_ID][0]==0.0){
 
             no_data_time +=1;
             if(no_data_time>5 && !move_left){
-                Robot_Interface.Robot_MoveL(0.05,0.0,0.0,robot);
+                Robot_Interface.Robot_MoveL(Robot_Interface.Move_Deviation,0.0,0.0,robot);
                 move_left = true;
                 no_data_time = 0;
             }else if(no_data_time > 5 && !move_right){
                 Robot_Interface.Robot_MoveJ(Robot_Interface.place_identify_pose,robot);
-                Robot_Interface.Robot_MoveL(-0.05,0.0,0.0,robot);
+                Robot_Interface.Robot_MoveL(-Robot_Interface.Move_Deviation,0.0,0.0,robot);
                 move_right = true;
                 no_data_time = 0;
             }
@@ -1553,12 +1636,12 @@ int main(int argc, char *argv[])
         if (move_left && !move_right)
         {
             std::cout<<"move left"<<std::endl;
-            Robot_Interface.Robot_MoveL(0.05,0.0,0.0,robot);
+            Robot_Interface.Robot_MoveL(Robot_Interface.Move_Deviation,0.0,0.0,robot);
             move_left = move_right = false;
         }else if(move_left && move_right)
         {
             std::cout<<"move right"<<std::endl;
-            Robot_Interface.Robot_MoveL(-0.05,0.0,0.0,robot);
+            Robot_Interface.Robot_MoveL(-Robot_Interface.Move_Deviation,0.0,0.0,robot);
             move_left = move_right = false;
         }
 
@@ -1575,16 +1658,20 @@ int main(int argc, char *argv[])
         }
 
 /*-----------------------------id1 螺丝-----------------------------*/
+        //清除之前识别到的无用数据
+        Robot_Interface.clean_ar_data();
+        Robot_Interface.clean_ur_data();
+        sleep(0.5);
         /*-----校准角度-----*/
 	    while(Robot_Interface.Ar_Pose[LS_ID][0]==0.0){
             no_data_time +=1;
             if(no_data_time>5 && !move_left){
-                Robot_Interface.Robot_MoveL(0.05,0.0,0.0,robot);
+                Robot_Interface.Robot_MoveL(Robot_Interface.Move_Deviation,0.0,0.0,robot);
                 move_left = true;
                 no_data_time = 0;
             }else if(no_data_time > 5 && !move_right){
                 Robot_Interface.Robot_MoveJ(Robot_Interface.place_identify_pose,robot);
-                Robot_Interface.Robot_MoveL(-0.05,0.0,0.0,robot);
+                Robot_Interface.Robot_MoveL(-Robot_Interface.Move_Deviation,0.0,0.0,robot);
                 move_right = true;
                 no_data_time = 0;
             }
@@ -1740,12 +1827,12 @@ int main(int argc, char *argv[])
         if (move_left && !move_right)
         {
             std::cout<<"move left"<<std::endl;
-            Robot_Interface.Robot_MoveL(0.05,0.0,0.0,robot);
+            Robot_Interface.Robot_MoveL(Robot_Interface.Move_Deviation,0.0,0.0,robot);
             move_left = move_right = false;
         }else if(move_left && move_right)
         {
             std::cout<<"move right"<<std::endl;
-            Robot_Interface.Robot_MoveL(-0.05,0.0,0.0,robot);
+            Robot_Interface.Robot_MoveL(-Robot_Interface.Move_Deviation,0.0,0.0,robot);
             move_left = move_right = false;
         }
         Robot_Interface.Robot_MoveR(robot_angle, robot);
@@ -1766,28 +1853,47 @@ int main(int argc, char *argv[])
         //     ros::spinOnce();
         //     loop_rate.sleep();
         // }
+
+       //清除之前识别到的无用数据
+        Robot_Interface.clean_ar_data();
+        Robot_Interface.clean_ur_data();
+        Robot_Interface.Ur_Pose[0][0]=0;
+        sleep(0.5);
+
         while(Robot_Interface.Ur_Pose[0][0]==0.0){
-            no_data_time +=1;
-            if(no_data_time>5 && !move_left){
-                Robot_Interface.Robot_MoveL(0.05,0.0,0.0,robot);
-                move_left = true;
-                no_data_time = 0;
-            }else if(no_data_time > 5 && !move_right){
-                Robot_Interface.Robot_MoveJ(Robot_Interface.place_identify_pose,robot);
-                Robot_Interface.Robot_MoveL(-0.05,0.0,0.0,robot);
-                move_right = true;
-                no_data_time = 0;
-            }
-            ros::spinOnce();
-            loop_rate.sleep();
+            msg = ros::topic::waitForMessage<geometry_msgs::PoseStamped>("/aruco_single/pose", ros::Duration(0.5));
+            if(msg){
+                break;
+            }else{
+                no_data_time +=1;
+                if(no_data_time>5 && !move_left){
+                    Robot_Interface.Robot_MoveL(Robot_Interface.Move_Deviation,0.0,0.0,robot);
+                    move_left = true;
+                    no_data_time = 0;
+                    sleep(2.0);
+                }else if(no_data_time > 5 && !move_right){
+                    Robot_Interface.Robot_MoveJ(Robot_Interface.place_identify_pose,robot);
+                    Robot_Interface.Robot_MoveL(-Robot_Interface.Move_Deviation,0.0,0.0,robot);
+                    move_right = true;
+                    no_data_time = 0;
+                    sleep(2.0);
+                }
+            } 
         }
-        sx = Robot_Interface.Ur_Pose[0][0];
-        sy = Robot_Interface.Ur_Pose[0][1];
-        sz = Robot_Interface.Ur_Pose[0][2];
-        ww = Robot_Interface.Ur_Pose[0][3];
-        wx = Robot_Interface.Ur_Pose[0][4];
-        wy = Robot_Interface.Ur_Pose[0][5];
-        wz = Robot_Interface.Ur_Pose[0][6];
+        // sx = Robot_Interface.Ur_Pose[0][0];
+        // sy = Robot_Interface.Ur_Pose[0][1];
+        // sz = Robot_Interface.Ur_Pose[0][2];
+        // ww = Robot_Interface.Ur_Pose[0][3];
+        // wx = Robot_Interface.Ur_Pose[0][4];
+        // wy = Robot_Interface.Ur_Pose[0][5];
+        // wz = Robot_Interface.Ur_Pose[0][6];
+        sx = msg->pose.position.x; //Robot_Interface.Ur_Pose[0][0];
+        sy = msg->pose.position.y; //Robot_Interface.Ur_Pose[0][1];
+        sz = msg->pose.position.z; //Robot_Interface.Ur_Pose[0][2];
+        ww = msg->pose.orientation.w; //Robot_Interface.Ur_Pose[0][3];
+        wx = msg->pose.orientation.x; //Robot_Interface.Ur_Pose[0][4];
+        wy = msg->pose.orientation.y; //Robot_Interface.Ur_Pose[0][5];
+        wz = msg->pose.orientation.z; //Robot_Interface.Ur_Pose[0][6];
         
         std::cout << "初步识别ar坐标：" <<std::endl;
         std::cout << "datax:" <<sx<<std::endl;
@@ -1930,12 +2036,12 @@ int main(int argc, char *argv[])
         if (move_left && !move_right)
         {
             std::cout<<"move left"<<std::endl;
-            Robot_Interface.Robot_MoveL(0.05,0.0,0.0,robot);
+            Robot_Interface.Robot_MoveL(Robot_Interface.Move_Deviation,0.0,0.0,robot);
             move_left = move_right = false;
         }else if(move_left && move_right)
         {
             std::cout<<"move right"<<std::endl;
-            Robot_Interface.Robot_MoveL(-0.05,0.0,0.0,robot);
+            Robot_Interface.Robot_MoveL(-Robot_Interface.Move_Deviation,0.0,0.0,robot);
             move_left = move_right = false;
         }
         Robot_Interface.Robot_MoveR(robot_angle, robot);
@@ -1967,30 +2073,52 @@ int main(int argc, char *argv[])
         Robot_Interface.Robot_MoveJ(Robot_Interface.place_fixed_middle_pose,robot);
         //抓取识别位姿
         Robot_Interface.Robot_MoveJ(Robot_Interface.place_identify_pose,robot);
+        
+        //清除之前识别到的无用数据
+        Robot_Interface.clean_ur_data();
+        Robot_Interface.clean_ar_data();
+        Robot_Interface.Ur_Pose[0][0]=0;
+        sleep(2.0);
+        
+        msg = ros::topic::waitForMessage<geometry_msgs::PoseStamped>("/aruco_single/pose", ros::Duration(2));
 
         /*-----校准角度-----*/
 	    while(Robot_Interface.Ur_Pose[0][0]==0.0){
-            no_data_time +=1;
-            if(no_data_time>5 && !move_left){
-                Robot_Interface.Robot_MoveL(0.05,0.0,0.0,robot);
-                move_left = true;
-                no_data_time = 0;
-            }else if(no_data_time > 5 && !move_right){
-                Robot_Interface.Robot_MoveJ(Robot_Interface.place_identify_pose,robot);
-                Robot_Interface.Robot_MoveL(-0.05,0.0,0.0,robot);
-                move_right = true;
-                no_data_time = 0;
+            msg = ros::topic::waitForMessage<geometry_msgs::PoseStamped>("/aruco_single/pose", ros::Duration(0.5));
+            if(msg){
+                break;
+            }else{
+                no_data_time +=1;
+                if(no_data_time>5 && !move_left){
+                    Robot_Interface.Robot_MoveL(Robot_Interface.Move_Deviation,0.0,0.0,robot);
+                    move_left = true;
+                    no_data_time = 0;
+                    sleep(2.0);
+                }else if(no_data_time > 5 && !move_right){
+                    Robot_Interface.Robot_MoveJ(Robot_Interface.place_identify_pose,robot);
+                    Robot_Interface.Robot_MoveL(-Robot_Interface.Move_Deviation,0.0,0.0,robot);
+                    move_right = true;
+                    no_data_time = 0;
+                    sleep(2.0);
+                }
             }
-            ros::spinOnce();
-            loop_rate.sleep();
+            // ros::spinOnce();
+            // loop_rate.sleep();
         }
-        sx1 = Robot_Interface.Ur_Pose[0][0];
-        sy1 = Robot_Interface.Ur_Pose[0][1];
-        sz1 = Robot_Interface.Ur_Pose[0][2];
-        ww1 = Robot_Interface.Ur_Pose[0][3];
-        wx1 = Robot_Interface.Ur_Pose[0][4];
-        wy1 = Robot_Interface.Ur_Pose[0][5];
-        wz1 = Robot_Interface.Ur_Pose[0][6];
+        // sx1 = Robot_Interface.Ur_Pose[0][0];
+        // sy1 = Robot_Interface.Ur_Pose[0][1];
+        // sz1 = Robot_Interface.Ur_Pose[0][2];
+        // ww1 = Robot_Interface.Ur_Pose[0][3];
+        // wx1 = Robot_Interface.Ur_Pose[0][4];
+        // wy1 = Robot_Interface.Ur_Pose[0][5];
+        // wz1 = Robot_Interface.Ur_Pose[0][6];
+        sx1 = msg->pose.position.x; //Robot_Interface.Ur_Pose[0][0];
+        sy1 = msg->pose.position.y; //Robot_Interface.Ur_Pose[0][1];
+        sz1 = msg->pose.position.z; //Robot_Interface.Ur_Pose[0][2];
+        ww1 = msg->pose.orientation.w; //Robot_Interface.Ur_Pose[0][3];
+        wx1 = msg->pose.orientation.x; //Robot_Interface.Ur_Pose[0][4];
+        wy1 = msg->pose.orientation.y; //Robot_Interface.Ur_Pose[0][5];
+        wz1 = msg->pose.orientation.z; //Robot_Interface.Ur_Pose[0][6];
         
         std::cout << "初步识别ar坐标：" <<std::endl;
         std::cout << "datax:" <<sx1<<std::endl;
@@ -2140,10 +2268,23 @@ int main(int argc, char *argv[])
             ros::spinOnce();
             loop_rate.sleep();
         }
-        //抓取中间位姿
-        Robot_Interface.Robot_MoveJ(Robot_Interface.LTCK_fixed_middle_pose,robot);
-        //抓取识别位姿
-        Robot_Interface.Robot_MoveJ(Robot_Interface.LTCK_pubsh_pose,robot);
+
+        Robot_Interface.Stop_Moment_Thread = false;
+        
+        if(push_id == 0 || push_id == 1)
+        {
+            //旋转末端
+            Robot_Interface.Robot_MoveJ(Robot_Interface.LTCK_left_middle_pose,robot);
+            //抓取中间位姿
+            Robot_Interface.Robot_MoveJ(Robot_Interface.LTCK_left_middle_push_pose,robot);
+            //抓取识别位姿
+            Robot_Interface.Robot_MoveJ(Robot_Interface.LTCK_left_push_pose,robot);
+        }else{
+            //抓取中间位姿
+            Robot_Interface.Robot_MoveJ(Robot_Interface.LTCK_fixed_middle_pose,robot);
+            //抓取识别位姿
+            Robot_Interface.Robot_MoveJ(Robot_Interface.LTCK_pubsh_pose,robot);
+        }
 
         /*-----校准角度-----*/
 	    while(Robot_Interface.Ar_Pose[arcodeid][0]==0.0){
@@ -2203,6 +2344,12 @@ int main(int argc, char *argv[])
         sleep(1.0);
         Robot_Interface.clean_ar_data();
         
+        // 放左边先旋转缩回
+        if(push_id == 0 || push_id == 1){
+            Robot_Interface.Robot_MoveJ(Robot_Interface.LTCK_left_middle_push_pose,robot);
+            Robot_Interface.Robot_MoveJ(Robot_Interface.LTCK_left_middle_pose,robot);
+        }
+
         Robot_Interface.Robot_MoveJ(Robot_Interface.grasp_id1_pubsh,robot);
         Robot_Interface.Robot_MoveL(-product_grasp_x,product_grasp_y,0.0,robot);
 
@@ -2210,10 +2357,19 @@ int main(int argc, char *argv[])
         bool close_state10 = Robot_Interface.Robot_Grasp_Control(0,robot);
         if(close_state10){
             Robot_Interface.Robot_MoveL(0.0,0.0,product_grasp_z,robot);
-            //抓取中间位姿
-            Robot_Interface.Robot_MoveJ(Robot_Interface.LTCK_fixed_middle_pose,robot);
-            //抓取识别位姿
-            Robot_Interface.Robot_MoveJ(Robot_Interface.LTCK_pubsh_pose,robot);
+            if(push_id == 0 || push_id == 1){
+                //旋转末端
+                Robot_Interface.Robot_MoveJ(Robot_Interface.LTCK_left_middle_pose,robot);
+                //抓取中间位姿
+                Robot_Interface.Robot_MoveJ(Robot_Interface.LTCK_left_middle_push_pose,robot);
+                //抓取识别位姿
+                Robot_Interface.Robot_MoveJ(Robot_Interface.LTCK_left_push_pose,robot);
+            }else{
+                //抓取中间位姿
+                Robot_Interface.Robot_MoveJ(Robot_Interface.LTCK_fixed_middle_pose,robot);
+                //抓取识别位姿
+                Robot_Interface.Robot_MoveJ(Robot_Interface.LTCK_pubsh_pose,robot);
+            } 
         }
         /*Robot_Interface.Robot_MoveL(sx-0.05,-sy+0.02,0.0,robot);
         Robot_Interface.Robot_MoveL(sx1,-sy1,0.0,robot);
@@ -2229,8 +2385,14 @@ int main(int argc, char *argv[])
         bool open_state10 = Robot_Interface.Robot_Grasp_Control(1,robot);
         if(open_state10){
             Robot_Interface.Robot_MoveL(0.0,0.0,0.04,robot);
-            //放置识别位姿
-            Robot_Interface.Robot_MoveJ(Robot_Interface.LTCK_fixed_middle_pose,robot);
+            if(push_id == 0|| push_id == 1)
+            {
+                Robot_Interface.Robot_MoveJ(Robot_Interface.LTCK_left_middle_push_pose,robot);
+                Robot_Interface.Robot_MoveJ(Robot_Interface.LTCK_left_middle_pose,robot);
+            }else{
+                //放置识别位姿
+                Robot_Interface.Robot_MoveJ(Robot_Interface.LTCK_fixed_middle_pose,robot);
+            }       
         }
         Robot_Interface.Robot_MoveJ(Robot_Interface.pubsh_pose,robot);
     }catch (xmate::ControlException &e) {
@@ -2238,7 +2400,8 @@ int main(int argc, char *argv[])
     }
     /*---------抓取2号结束----------*/
     /*---------华丽的分割线---------*/
-    
+    Robot_Interface.Stop_Moment_Thread = true;
+    // Robot_Interface.Listen_Moment.join();
     ros::spin();
     return 0;
 }

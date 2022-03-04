@@ -46,12 +46,13 @@ class HG_AI_Robot{
         void Init(xmate::Robot& robot);     //初始化函数
 
         double Move_Speed = 0.2; //机械臂运行速度
+        double Move_Deviation = 0.05; //偏移量
         float test = 0.0;
         float Ar_Pose[9][7] = {{0.0}};  //AR码信息
         float Ur_Pose[2][7] = {{0.0}};  //UR码信息
         bool RobotPower = false;    //上电状态，默认下点
         
-        float Jog0_Robot_Moment = 3.0; //关节三默认最大力矩
+        float Jog0_Robot_Moment = 3.0; //关节0默认最大力矩
         float Jog4_Robot_Moment = 25.0; //关节三默认最大力矩
         float Jog5_Robot_Moment = 25.0; //关节五默认最大力矩
         bool Start_Moment_Thread = true; //默认开启关节力矩监听线程
@@ -79,7 +80,14 @@ class HG_AI_Robot{
         std::array<double,7> LTCK_pubsh_pose = {{(-91.486958 * PI / 180), (-25.924667 * PI / 180), (0.56589202 * PI / 180), (-72.387583 * PI / 180), (-1.7405090 * PI / 180), (-81.707141 * PI / 180), (3.72719764 * PI / 180)}};
         //立体仓库中间位置
         std::array<double, 7> LTCK_fixed_middle_pose = {{(-18.833958 * PI / 180), (-15.501869* PI / 180), (0.74440612 * PI / 180), (-84.170942 * PI / 180), (-0.5817432 * PI / 180), (-80.469978 * PI / 180), (-9.4580955 * PI / 180)}};
- 
+
+        //立体仓库左边识别位姿
+        std::array<double,7> LTCK_left_push_pose = {{(-87.179 * PI / 180), (-25.303 * PI / 180), (0.377 * PI / 180), (-73.008 * PI / 180), (-0.465 * PI / 180), (-80.056 * PI / 180), (3.374 * PI / 180)}};
+        //立体仓库左边中间位置
+        std::array<double, 7> LTCK_left_middle_pose = {{(-18.833958 * PI / 180), (-5.0* PI / 180), (0.377 * PI / 180), (-95.6  * PI / 180), (-0.465 * PI / 180), (-80.056 * PI / 180), (176.344 * PI / 180)}};
+        //立体仓库左边识别中间位置
+        std::array<double, 7> LTCK_left_middle_push_pose = {{(-91.486958 * PI / 180), (-5.0* PI / 180), (0.377 * PI / 180), (-95.6  * PI / 180), (-0.465 * PI / 180), (-80.056 * PI / 180), (176.344 * PI / 180)}};
+
 
         bool Robot_MoveJ(std::array<double, 7> target_jont, xmate::Robot& robot); //关节运动MoveJ指令
         bool Robot_MoveL(float x, float y, float z, xmate::Robot& robot); //坐标运动MoveL指令

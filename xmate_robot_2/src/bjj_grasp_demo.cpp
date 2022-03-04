@@ -147,6 +147,10 @@ int main(int argc, char *argv[])
             ros::spinOnce();
             loop_rate.sleep();
         }
+        //清除之前识别到的无用数据
+        Robot_Interface.clean_ar_data();
+        Robot_Interface.clean_ur_data();
+        sleep(0.5);
         while(Robot_Interface.Ur_Pose[0][0]==0.0){
 
             no_data_time +=1;
